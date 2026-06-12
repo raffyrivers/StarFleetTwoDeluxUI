@@ -6,6 +6,7 @@ from Display import *
 import os
 pygame.init()
 
+lastTime = 0 # <---------- USE FOR ANY TIMED EVENTS!!!
 BACKGREY = (150, 150, 150)
 status_font = pygame.font.SysFont('arial', 12, True)
 PANELGREY = (210, 210, 210)
@@ -42,6 +43,16 @@ toggle_h = {'val': False}; pressed_h = {'pressed': False}
 toggle_j = {'val': False}; pressed_j = {'pressed': False}
     # combat console --> target data
 toggle_rShift = {'val': False}; pressed_rShift = {'pressed': False}
+
+message_index = 0
+messages = ['message test', 'message test 2', 'message test 3']
+sub_messages = ['sub message', 'sub message 2', 'sub message 3']
+message_surfs = []
+sub_message_surfs = []
+reports = ['report test', 'report test 2', 'report test 3']
+sub_reports = ['sub reports', 'sub reports 2', 'sub reports 3']
+report_surfs = []
+sub_report_surfs = []
 
 # Panel class that creates a panel for the display. Lets you put elements upon the panel.
 class Panel:
@@ -206,14 +217,17 @@ class Panel:
 
         # init communication console
         communication_console = Panel.get_panel('Communication Console', panels)
-        Display('status',(315,175),communication_console,(5,25))
-        Display('status',(310,175),communication_console,(325,25))
+        Display('status1',(315,175),communication_console,(5,25))
+        Display('status2',(310,175),communication_console,(325,25))
         Text('Status',communication_console,(5,9),'arial',12,'black')
         Panel_bar('CMF','palegreen3',(30,13),communication_console,(290,10),'black',12,0,0)
         Panel_bar('Messages',BACKGREY,(60,13),communication_console,(325,10),'black',12,0,0)
         Panel_bar('Reports',BACKGREY,(60,13),communication_console,(386,10),'black',12,0,0)
         Panel_bar('Combined',BACKGREY,(60,13),communication_console,(447,10),'black',12,0,0)
         Panel_bar('Send Message',BACKGREY,(75,13),communication_console,(508,10),'black',12,0,0)
+        communication_console.reportsButton = False # press '-'
+        communication_console.messageButton = True # press '+'
+        communication_console.comboButton = False
 
         # init combat console.
         combat_console = Panel.get_panel('Combat Console',panels); combatC = combat_console
@@ -330,6 +344,9 @@ class Panel:
         return panels
 
     def draw_elements(panels:list):
+        currentTime = pygame.time.get_ticks() # <------- USE FOR ANY TIMED EVENTS!!!
+        global lastTime
+
         primary = Panel.get_panel('Primary Display', panels); pri = primary.get_element('primary display')
             # SCIENCE CONSOLE
         science_console_display = Panel.get_panel('Science Console', panels).get_element('sights display') # Sights display on science console is drawn onto.
@@ -783,7 +800,7 @@ class Panel:
         txt_surf = txt_font.render('S', True, 'green'); txt_rect = txt_surf.get_rect(center=(622.5, engC.rect.centery+87.5)); engC.surf.blit(txt_surf,txt_rect)
         txt_surf = txt_font.render('0', True, 'green'); txt_rect = txt_surf.get_rect(center=(622.5, engC.rect.centery+100.5)); engC.surf.blit(txt_surf,txt_rect)
 
-        k = 0.0; l = 0; # place holders for increment 
+        k = 0.0; l = 0; # place holders for increment
         drawHeight = engC.kVal + engC.rect.centery+92; 
         drawHeight = engC.kVal + engC.rect.centery + 92
         engC.rectw = 35
@@ -905,6 +922,70 @@ class Panel:
         for i in range(0, 12, 1):
             pygame.draw.line(engC.surf, PANELGREY, (575, j), (585, j), 2)
             j-=42
+
+
+        # Communication Console
+        global message_index # place holder variable delete when reading events from a file
+        commC = Panel.get_panel("Communication Console", panels)
+        leftDisplay = commC.get_element("status1")
+        rightDisplay = commC.get_element("status2")
+        for message in messages:
+            message_surfs.append(txt_font.render(message, True, 'green'))
+        for sub in sub_messages:
+            sub_message_surfs.append(txt_font.render(sub, True, 'white'))
+        for report in reports:
+            report_surfs.append(txt_font.render(report, True, 'green'))
+        for sub in sub_reports:
+            sub_report_surfs.append(txt_font.render(sub, True, 'white'))
+        
+        comB = commC.get_element('Combined')
+        mesB = commC.get_element('Messages')
+        repB = commC.get_element('Reports')
+        if commC.messageButton: 
+            mesB.color = pygame.Color(BUTTONPRESSED)
+            mesB.font = txt_font_small
+            comB.color = pygame.Color(BACKGREY); repB.color = pygame.Color(BACKGREY)
+            comB.font = txt_font; repB.font = txt_font
+
+            if currentTime > (lastTime + 1000): # place holder statement delete when reading events from a file
+                message_index += 1
+                lastTime = currentTime
+            y = 3
+            for i in range(message_index):
+                leftDisplay.surf.blit(message_surfs[i], (3, y))
+                rightDisplay.surf.blit(sub_message_surfs[i], (3, y))
+                y += 13
+            pygame.draw.rect(mesB.surf, 'red', (0,0,20,20))
+        elif commC.reportsButton:
+            repB.color = pygame.Color(BUTTONPRESSED)
+            repB.font = txt_font_small
+            comB.color = pygame.Color(BACKGREY); mesB.color = pygame.Color(BACKGREY)
+            comB.font = txt_font; mesB.font= txt_font
+
+            if currentTime > (lastTime + 1000):
+                message_index += 1
+                lastTime = currentTime
+            y = 3
+            for i in range(message_index):
+                leftDisplay.surf.blit(report_surfs[i], (3, y))
+                rightDisplay.surf.blit(sub_report_surfs[i], (3,y))
+                y += 13
+        elif commC.comboButton:
+            comB.color = pygame.Color(BUTTONPRESSED)
+            comB.font = txt_font_small
+            repB.color = pygame.Color(BACKGREY); mesB.color = pygame.Color(BACKGREY)
+            repB.font = txt_font; mesB.font = txt_font
+
+            if currentTime > (lastTime + 1000):
+                message_index += 1
+                lastTime = currentTime
+            y = 3
+            for i in range(message_index):
+                leftDisplay.surf.blit(message_surfs[i], (3,y))
+                rightDisplay.surf.blit(report_surfs[i], (3,y))
+                y += 13
+            
+
     # Combat Console
         showCombatC = True
         combatC = Panel.get_panel('Combat Console', panels)
@@ -1152,11 +1233,11 @@ class Panel:
                 z+=15
             txt_surf = txt_font_medium.render('D', True, 'red'); txt_rect = txt_surf.get_rect(midleft=(510, 127.5)); combatC.surf.blit(txt_surf,txt_rect)
             txt_surf = txt_font_medium.render('S', True, 'red'); txt_rect = txt_surf.get_rect(midleft=(510, 142.5)); combatC.surf.blit(txt_surf,txt_rect)
-            txt_surf = txt_font_medium.render('B', True, 'red'); txt_rect = txt_surf.get_rect(midleft=(582, 127.5)); combatC.surf.blit(txt_surf,txt_rect)
-            txt_surf = txt_font_medium.render('N', True, 'red'); txt_rect = txt_surf.get_rect(midleft=(576, 142.5)); combatC.surf.blit(txt_surf,txt_rect)
+            txt_surf = txt_font_medium.render('B', True, 'red'); txt_rect = txt_surf.get_rect(midleft=(591, 127.5)); combatC.surf.blit(txt_surf,txt_rect)
+            txt_surf = txt_font_medium.render('N', True, 'red'); txt_rect = txt_surf.get_rect(midleft=(585, 142.5)); combatC.surf.blit(txt_surf,txt_rect)
             for mode in weapon_mode:
                 txt_surf = txt_font_medium.render(mode[0], True, 'black'); txt_rect = txt_surf.get_rect(center=(547.5, 95)); combatC.surf.blit(txt_surf,txt_rect)
-            txt_surf = txt_font_medium.render('A', True, 'red'); txt_rect = txt_surf.get_rect(center=(515, 95)); combatC.surf.blit(txt_surf,txt_rect)
+            txt_surf = txt_font_medium.render('A', True, 'red'); txt_rect = txt_surf.get_rect(center=(510, 95)); combatC.surf.blit(txt_surf,txt_rect)
             txt_surf = txt_font_medium.render('M', True, 'red'); txt_rect = txt_surf.get_rect(center=(556,95)); combatC.surf.blit(txt_surf,txt_rect)            
             
             # shields
@@ -1309,6 +1390,7 @@ class Panel:
         nav = Panel.get_panel('Navigation Console', panels); sm = Panel.get_panel('Star Map', panels)
         nav_display = Panel.get_panel(("Navigation Console"), panels).get_element("Navigation Video")
         engC = Panel.get_panel('Engineering Console', panels); i = 21; k = -1; l = -1
+        commC = Panel.get_panel('Communication Console', panels)
         
         combatC = Panel.get_panel('Combat Console', panels); 
 
@@ -1469,6 +1551,20 @@ class Panel:
                     combatC.shldManual = False
                     combatC.shldBattleEntry = False
                     combatC.shldMaximum = True
+                
+                
+                if event.key == K_9:
+                    commC.messageButton = True
+                    commC.reportsButton = False
+                    commC.comboButton = False
+                if event.key == K_0:
+                    commC.messageButton = False
+                    commC.reportsButton = True
+                    commC.comboButton = False
+                if event.key == K_MINUS:
+                    commC.messageButton = False
+                    commC.reportsButton = False
+                    commC.comboButton = True
 
                 # main display
                     # for this part use up&down arrow keys for the zoom in/out 
@@ -1479,10 +1575,7 @@ class Panel:
                     pri.showCircles = True
                     #if display.playing == DeepSpace: #also add in changes for the mode (default is hyperspace)
                     #   display.showCircles = False 
-
-                        # with toggle system, it is possible to rework this video playing stuff in the primary display in a way that it allows it to cycle through videos better
-                        # also is now possible to make it so that circles of orbit in navigation show only when a specific video is playing
-                            # i mean you can use the index of a video in a list, use if statement obviously to check index of viedeo then change variable for oribital circles 
+# with toggle system, it is possible to rework this video playing stuff in the primary display in a way that it allows it to cycle through videos better also is now possible to make it so that circles of orbit in navigation show only when a specific video is playing i mean you can use the index of a video in a list, use if statement obviously to check index of viedeo then change variable for oribital circles 
         nav_display.update(events)
         #ncd.surf.blit()
         pri.update(events)

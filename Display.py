@@ -17,6 +17,7 @@ class Display:
         
     def draw(self): # Draw with nyo parameters to work with the panel class
         self.panel.surf.blit(self.surf, self.position)
+        pygame.draw.rect(self.surf, 'black', self.rect)
 
     def update(self):
         pass

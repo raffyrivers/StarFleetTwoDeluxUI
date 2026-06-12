@@ -32,6 +32,16 @@ def main():
 
     # initializes status bars for the top of the screen.
     top_bars = Status_bar.init_status_bars()
+    bottom_bars = Status_bar.init_menu_bars()
+    bottom_bars[0].set_highlight_letter(0)
+    bottom_bars[1].set_highlight_letter(0)  
+    bottom_bars[2].set_highlight_letter(2)
+    bottom_bars[3].set_highlight_letter(0)
+    bottom_bars[4].set_highlight_letter(0)
+    bottom_bars[5].set_highlight_letter(2)
+    bottom_bars[6].set_highlight_letter(2)
+    bottom_bars[7].set_highlight_letter(2)
+    bottom_bars[8].set_highlight_letter(2)
     panels = Panel.init_panels() # Panels and elements are init
     isFullscreen = True
     running = True
@@ -55,7 +65,7 @@ def main():
         Status_bar.sequence_flash(top_bars) # Sequentially flashes each status bar.
         canvas.fill(BACKGREY)
         Panel.draw_panels(canvas, panels) # Draws each panel to the screen.
-        Status_bar.draw_bars(canvas, top_bars, 660, 10) # draws top canvas status bars
+        Status_bar.draw_bars(canvas, top_bars, 660, 10,bottom_bars) # draws top canvas status bars
         Panel.draw_elements(panels)
 
 
