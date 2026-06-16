@@ -56,6 +56,16 @@ class Status_bar(pygame.sprite.Sprite):
         bars2 = []
         for label in labels2:
             bars2.append(Status_bar('grey', label))
+        bars2[0].set_highlight_letter(0)
+        bars2[1].set_highlight_letter(0)  
+        bars2[2].set_highlight_letter(2)
+        bars2[3].set_highlight_letter(0)
+        bars2[4].set_highlight_letter(0)
+        bars2[5].set_highlight_letter(2)
+        bars2[6].set_highlight_letter(2)
+        bars2[7].set_highlight_letter(2)
+        bars2[8].set_highlight_letter(2)
+
         return bars2
 
     def event_listener(bars:list, event:pygame.event):
