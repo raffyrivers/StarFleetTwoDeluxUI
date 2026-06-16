@@ -45,7 +45,8 @@ toggle_j = {'val': False}; pressed_j = {'pressed': False}
 toggle_rShift = {'val': False}; pressed_rShift = {'pressed': False}
 
 message_index = 0
-messages = ['message test', 'message test 2', 'message test 3']
+sub_index = 0
+messages = ['message test', 'message test 2', 'message test 3', 'message test', 'message test 2', 'message test 3', 'message test', 'message test 2', 'message test 3', 'message test', 'message test 2', 'message test 3']
 sub_messages = ['sub message', 'sub message 2', 'sub message 3']
 message_surfs = []
 sub_message_surfs = []
@@ -942,25 +943,33 @@ class Panel:
         comB = commC.get_element('Combined')
         mesB = commC.get_element('Messages')
         repB = commC.get_element('Reports')
+
+        def check_end_list():
+            global message_index
+            if message_index > len(messages) or message_index > len(sub_messages) or message_index > len(reports) or message_index > len(sub_reports):
+                    message_index = 0
+
+        def draw_text(surfs1:list, surfs2:list):
+            y = 3
+            for i in range(message_index):
+                leftDisplay.surf.blit(surfs1[i], (3,y))
+                rightDisplay.surf.blit(surfs2[i], (3,y))
+                if y > leftDisplay.rect.height - 20:
+                    y  = 3
+                y += 13
+
+
         if commC.messageButton: 
             mesB.color = pygame.Color(BUTTONPRESSED)
             mesB.font = txt_font_small
             comB.color = pygame.Color(BACKGREY); repB.color = pygame.Color(BACKGREY)
             comB.font = txt_font; repB.font = txt_font
 
-            if currentTime > (lastTime + 500): # place holder statement delete when reading events from a file
+            if currentTime > (lastTime + 1000): # place holder statement delete when reading events from a file
                 message_index += 1
                 lastTime = currentTime
-                if message_index > len(messages) or message_index > len(sub_messages) or message_index > len(reports) or message_index > len(sub_reports):
-                    message_index = 0
-            y = 3
-            for i in range(message_index):
-                leftDisplay.surf.blit(message_surfs[i], (3, y))
-                rightDisplay.surf.blit(sub_message_surfs[i], (3, y))
-                if y < leftDisplay.rect.height - 20: # left and right display are same height only left is checked
-                    y += 13
-                print(len(message_surfs))     
-            pygame.draw.rect(mesB.surf, 'red', (0,0,20,20))
+                check_end_list()
+            draw_text(message_surfs, sub_message_surfs)
         elif commC.reportsButton:
             repB.color = pygame.Color(BUTTONPRESSED)
             repB.font = txt_font_small
@@ -970,11 +979,8 @@ class Panel:
             if currentTime > (lastTime + 1000):
                 message_index += 1
                 lastTime = currentTime
-            y = 3
-            for i in range(message_index):
-                leftDisplay.surf.blit(report_surfs[i], (3, y))
-                rightDisplay.surf.blit(sub_report_surfs[i], (3,y))
-                y += 13
+                check_end_list()
+            draw_text(report_surfs, sub_report_surfs)
         elif commC.comboButton:
             comB.color = pygame.Color(BUTTONPRESSED)
             comB.font = txt_font_small
@@ -984,11 +990,8 @@ class Panel:
             if currentTime > (lastTime + 1000):
                 message_index += 1
                 lastTime = currentTime
-            y = 3
-            for i in range(message_index):
-                leftDisplay.surf.blit(message_surfs[i], (3,y))
-                rightDisplay.surf.blit(report_surfs[i], (3,y))
-                y += 13
+                check_end_list()
+            draw_text(message_surfs, report_surfs)
                 
 
     # Combat Console
