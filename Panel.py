@@ -45,8 +45,11 @@ toggle_j = {'val': False}; pressed_j = {'pressed': False}
 toggle_rShift = {'val': False}; pressed_rShift = {'pressed': False}
 
 message_index = 0
-sub_index = 0
-messages = ['message test', 'message test 2', 'message test 3', 'message test', 'message test 2', 'message test 3', 'message test', 'message test 2', 'message test 3', 'message test', 'message test 2', 'message test 3']
+report_index = 0
+sub_message_index = 0
+sub_report_index = 0
+
+messages = ['message test', 'message test 2', 'message test 3', 'message test', 'message test 2', 'message test 3', 'message test', 'message test 2', 'message test 3', 'message test', 'message test 2', 'message test 3', '4', '5', '6', '7', '8']
 sub_messages = ['sub message', 'sub message 2', 'sub message 3']
 message_surfs = []
 sub_message_surfs = []
@@ -934,7 +937,8 @@ class Panel:
 
 
         # Communication Console
-        global message_index # place holder variable delete when reading events from a file
+        global message_index, sub_message_index, report_index, sub_report_index
+
         commC = Panel.get_panel("Communication Console", panels)
         leftDisplay = commC.get_element("status1")
         rightDisplay = commC.get_element("status2")
@@ -945,18 +949,65 @@ class Panel:
         repB = commC.get_element('Reports')
 
         def check_end_list():
-            global message_index
-            if message_index > len(messages) or message_index > len(sub_messages) or message_index > len(reports) or message_index > len(sub_reports):
-                    message_index = 0
+            global message_index, sub_message_index, report_index, sub_report_index
+            if message_index > len(messages):
+                message_index = 0
+            if sub_message_index > len(sub_messages):
+                sub_message_index = 0
+            if report_index > len(reports):
+                report_index = 0
+            if sub_report_index > len(sub_reports):
+                sub_report_index = 0
 
         def draw_text(surfs1:list, surfs2:list):
             y = 3
-            for i in range(message_index):
-                leftDisplay.surf.blit(surfs1[i], (3,y))
-                rightDisplay.surf.blit(surfs2[i], (3,y))
-                if y > leftDisplay.rect.height - 20:
-                    y  = 3
-                y += 13
+            y2 = 3
+            
+            if commC.messageButton:
+                for i in range(message_index):
+                    if y > leftDisplay.rect.height - 13:
+                        y = 3
+                        pygame.draw.rect(leftDisplay.surf, 'black', leftDisplay.rect)
+                    leftDisplay.surf.blit(surfs1[i], (3,y))
+                    y += 13
+                    
+                for i in range(sub_message_index):
+                    if y2 > rightDisplay.rect.height - 13:
+                        y2 = 3
+                        pygame.draw.rect(rightDisplay.surf, 'black', rightDisplay.rect)
+                    rightDisplay.surf.blit(surfs2[i], (3,y2))
+                    y2 += 13
+
+            elif commC.reportsButton:
+                for i in range(report_index):
+                    if y > leftDisplay.rect.height - 13:
+                        y = 3
+                        pygame.draw.rect(leftDisplay.surf, 'black', leftDisplay.rect)
+                    leftDisplay.surf.blit(surfs1[i], (3,y))
+                    y += 13
+                   
+                for i in range(sub_report_index):
+                    if y2 > rightDisplay.rect.height - 13:
+                        y2 = 3
+                        pygame.draw.rect(rightDisplay.surf, 'black', rightDisplay.rect)
+                    rightDisplay.surf.blit(surfs2[i], (3,y2))
+                    y2 += 13
+                       
+            elif commC.comboButton:
+                for i in range(message_index):
+                    if y > leftDisplay.rect.height - 13:
+                        y = 3
+                        pygame.draw.rect(leftDisplay.surf, 'black', leftDisplay.rect)
+                    leftDisplay.surf.blit(surfs1[i], (3,y))
+                    y += 13
+                    
+                for i in range(report_index):
+                    if y2 > rightDisplay.rect.height - 13:
+                        y2 = 3
+                        pygame.draw.rect(rightDisplay.surf, 'black', rightDisplay.rect)
+                    rightDisplay.surf.blit(surfs2[i], (3,y2))
+                    y2 += 13
+                   
 
 
         if commC.messageButton: 
@@ -966,7 +1017,7 @@ class Panel:
             comB.font = txt_font; repB.font = txt_font
 
             if currentTime > (lastTime + 1000): # place holder statement delete when reading events from a file
-                message_index += 1
+                message_index += 1; sub_message_index += 1; report_index += 1; sub_report_index += 1
                 lastTime = currentTime
                 check_end_list()
             draw_text(message_surfs, sub_message_surfs)
@@ -977,7 +1028,7 @@ class Panel:
             comB.font = txt_font; mesB.font= txt_font
 
             if currentTime > (lastTime + 1000):
-                message_index += 1
+                message_index += 1; sub_message_index += 1; report_index += 1; sub_report_index += 1
                 lastTime = currentTime
                 check_end_list()
             draw_text(report_surfs, sub_report_surfs)
@@ -988,7 +1039,7 @@ class Panel:
             repB.font = txt_font; mesB.font = txt_font
 
             if currentTime > (lastTime + 1000):
-                message_index += 1
+                message_index += 1; sub_message_index += 1; report_index += 1; sub_report_index += 1
                 lastTime = currentTime
                 check_end_list()
             draw_text(message_surfs, report_surfs)
