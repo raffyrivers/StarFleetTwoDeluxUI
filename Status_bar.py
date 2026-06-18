@@ -11,6 +11,7 @@ PANELGREY = (210, 210, 210)
 labels = ['LowPwr', 'LowSup', 'LowTime','Medical', 
     'SecAlt', 'Mines', 'Distress', 'HullPn']
 labels2 = ['NAV', 'ENG', 'CMB', 'CMP', 'SEC', 'COM', 'STG', 'SCI', 'CTL']
+notepad = ['NotePad']
 class Status_bar(pygame.sprite.Sprite):
     def __init__(self, color:tuple, label:str):
         pygame.sprite.Sprite.__init__(self)
@@ -56,17 +57,13 @@ class Status_bar(pygame.sprite.Sprite):
         bars2 = []
         for label in labels2:
             bars2.append(Status_bar('grey', label))
-        bars2[0].set_highlight_letter(0)
-        bars2[1].set_highlight_letter(0)  
-        bars2[2].set_highlight_letter(2)
-        bars2[3].set_highlight_letter(0)
-        bars2[4].set_highlight_letter(0)
-        bars2[5].set_highlight_letter(2)
-        bars2[6].set_highlight_letter(2)
-        bars2[7].set_highlight_letter(2)
-        bars2[8].set_highlight_letter(2)
-
         return bars2
+    def draw_notepad_bar(self, surface:pygame.Surface, surface_width:int, y_position:int, boarder_radius:int):
+        bar_width = 80
+        centered_x = (surface_width) // 2
+        
+        self.draw(surface, centered_x, y_position, boarder_radius)
+
 
     def event_listener(bars:list, event:pygame.event):
         if event.key == K_1: # num keys from 1-8 will change the color of the top status bars to red.
@@ -86,7 +83,7 @@ class Status_bar(pygame.sprite.Sprite):
         elif event.key == K_8:
             bars[7].change_color('red')
     
-    def draw_bars(surface:pygame.Surface, bars:list, x_position:int, y_position:int, bars2:list):
+    def draw_bars(surface:pygame.Surface, bars:list, x_position:int, y_position:int, bars2:list, notepad_bar=None):
         label_x = x_position
         for bar in bars:
             bar.draw(surface, label_x, y_position, 2)
@@ -95,6 +92,8 @@ class Status_bar(pygame.sprite.Sprite):
         for bar in bars2:
             bar.draw2(surface, label_x, 1050, 2)
             label_x += 73
+        if notepad_bar:
+            notepad_bar.draw_notepad_bar(surface, surface.get_width(), 1015, 2)
             
 
     def change_color(self, color:tuple):
