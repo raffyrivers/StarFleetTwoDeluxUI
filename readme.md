@@ -1,52 +1,66 @@
 # Star Fleet II Delux UI Showcase
 
-## Notes
-as of  7/15/25 there is no mouse control for this code, 
-mouse control needs to be added for buttons 
-ex. 'Combat Console' --> 'Shields' --> 'Auto', 'Manual', 'Battle Entry', 'Maximum'
-and other buttons in consoles
-for this version of the demo, UIs/GUIs are activated (displayed) via keybind, check initializations of panels or very bottom of panel for if statemnt blocks
+Pygame cockpit UI demo for a Star Fleet II style command screen.
 
 ## Requirements
-```
-python 3.12.*
-pip3
-ffmpeg
-git 
-```
 
-<b> Ffmpeg needs to be installed manually on Windows ([INSTALL HERE](https://www.ffmpeg.org/download.html)) </b>
+- Python 3.12+
+- FFmpeg with `ffprobe` on PATH
+- Python packages from `requirements.txt`
 
-## Installation
+## Setup
 
-```
-git clone https://github.com/raffyrivers/StarFleetTwoDeluxUI.git
-
-# Change directory
-cd StarFleetTwoDeluxUI
-
-# pip install -r requirements.txt
-
-# Then run :)
-python main.py 
-
+```powershell
+python -m pip install -r requirements.txt
+winget install --id Gyan.FFmpeg -e
 ```
 
-## Installation in virtual environment
- 
+Verify FFmpeg:
+
+```powershell
+ffmpeg -version
+ffprobe -version
 ```
 
-git clone https://github.com/raffyrivers/StarFleetTwoDeluxUI.git
+## Run
 
-# Change directory
-cd StarFleetTwoDeluxUI
-
-# Be sure to run python3.12 only!!!!
-python -m venv /path/to/venvfolder
-
-source /path/to/venvfolder/bin/activate
-
-pip install -r requirements.txt
-
+```powershell
 python main.py
 ```
+
+## Controls
+
+| Key | Action |
+| --- | --- |
+| `Esc` | Quit |
+| `F11` | Toggle fullscreen |
+| `1`-`8` | Toggle top alert indicators |
+| `n` | Cycle primary display video |
+| `i`, `o`, `p` | Navigation console views |
+| `l`, `;`, `'` | Star map views |
+| `q`, `w` | Engineering probe views |
+| `z`, `x` | Hyperspace speed up/down |
+| `c`, `v` | Space speed up/down |
+| `F1`-`F4` | Ship damage display states |
+| `d`, `f`, `g`, `h`, `j` | Combat display overlays |
+| `m`, `,`, `.`, `/` | Shield modes |
+| `Right Shift` | Target board |
+| `9`, `0`, `-` | Communication display modes |
+
+## Status Colors
+
+| Color | Meaning |
+| --- | --- |
+| Green | Normal, ready, active |
+| Yellow | Warning, low, caution |
+| Red | Alert or selected combat state |
+| Cyan | Labels and headings |
+| Grey | Inactive controls |
+
+## TODO
+
+- [ ] Add mouse support for panel buttons.
+- [ ] Replace remaining hardcoded placeholder data with a shared state model.
+- [ ] Split large `Panel.py` drawing sections into smaller console modules.
+- [ ] Add bounds checks for text-heavy panels at smaller window sizes.
+- [ ] Add a simple startup check for missing FFmpeg/FFprobe.
