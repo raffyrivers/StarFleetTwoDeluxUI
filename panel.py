@@ -1,8 +1,8 @@
 import pygame
 import math
-from Text import *
-from Status_bar import *
-from Display import *
+from text import *
+from status_bar import *
+from display import *
 import os
 pygame.init()
 
@@ -13,12 +13,12 @@ PANELGREY = (210, 210, 210)
 PANELGREYDARK = (180, 180, 180) # this is slightly darker than panelgrey, and is used as the background color for 'combat console' --> 'weapons', 'shields', etc
 ALTPANELGREY = (50, 50, 50) # this is the very dark grey, which is used for data displays as seen in 'Data', 'Navigation', etc
 BUTTONPRESSED = (115,115,115)
-ship_dmg_display = pygame.image.load(r'assets/shipdmg.png')
-combatCShldShip = pygame.image.load(r'assets/babaaa 2.png')
-buttonBoard = pygame.image.load(r'assets/tempBoardResize.png') # should manually redraw this later, but this is going to an image because of of time's sake 
-mainDispShip = pygame.image.load(r'assets/combcShip.png')
-nav_map_png = pygame.image.load(r'assets/NavMap.png')
-war_map_png = pygame.image.load(r'assets/WarMap.png')
+ship_dmg_display = pygame.image.load(r'assets\shipdmg.png')
+combatCShldShip = pygame.image.load(r'assets\babaaa 2.png')
+buttonBoard = pygame.image.load(r'assets\tempBoardResize.png') # should manually redraw this later, but this is going to an image because of of time's sake
+mainDispShip = pygame.image.load(r'assets\combcShip.png')
+nav_map_png = pygame.image.load(r'assets\NavMap.png')
+war_map_png = pygame.image.load(r'assets\WarMap.png')
 # fonts 
 txt_font = pygame.font.SysFont('arial', 12, True); txt_font_small = pygame.font.SysFont('arial', 10, True); txt_font_medium = pygame.font.SysFont('arial', 11, True); 
 txt_font_combatC = pygame.font.SysFont('arial', 30, True); txt_font_very_small = pygame.font.SysFont('arial', 7, True); 
@@ -45,16 +45,28 @@ toggle_j = {'val': False}; pressed_j = {'pressed': False}
 toggle_rShift = {'val': False}; pressed_rShift = {'pressed': False}
 
 message_index = 0
-report_index = 0
-sub_message_index = 0
-sub_report_index = 0
-
-messages = ['message test', 'message test 2', 'message test 3', 'message test', 'message test 2', 'message test 3', 'message test', 'message test 2', 'message test 3', 'message test', 'message test 2', 'message test 3', '4', '5', '6', '7', '8']
-sub_messages = ['sub message', 'sub message 2', 'sub message 3']
+messages = ['Starbase 12', 'USS Merrimack', 'Fleet Ops', 'Probe Net', 'Science Bay', 'Supply Deck', 'Medical']
+sub_messages = [
+    'convoy ETA 05.2 days',
+    'escort wing holding 4.8 ly',
+    'priority route SS-39A open',
+    'three contacts verified',
+    'class-M survey complete',
+    'cargo transfer at 88 pct',
+    'triage teams standing by',
+]
 message_surfs = []
 sub_message_surfs = []
-reports = ['report test', 'report test 2', 'report test 3']
-sub_reports = ['sub reports', 'sub reports 2', 'sub reports 3']
+reports = ['NAV-204', 'ENG-117', 'SCI-088', 'SEC-019', 'CMB-311', 'COM-042', 'STG-076']
+sub_reports = [
+    'course 135 deg locked',
+    'warp coils nominal',
+    'planet Gurth supports orbit',
+    'deck 7 alert resolved',
+    'shield grid at 58 pct',
+    'subspace delay 0.8 sec',
+    'formation delta active',
+]
 report_surfs = []
 sub_report_surfs = []
 
@@ -232,6 +244,8 @@ class Panel:
         communication_console.reportsButton = False # press '-'
         communication_console.messageButton = True # press '+'
         communication_console.comboButton = False
+        message_surfs.clear(); sub_message_surfs.clear()
+        report_surfs.clear(); sub_report_surfs.clear()
         for message in messages: # init messages
             message_surfs.append(txt_font.render(message, True, 'green'))
         for sub in sub_messages:
@@ -350,14 +364,45 @@ class Panel:
         Text('?', ncd, (ncd.rect.centerx+60, ncd.rect.centery+111), 'arial', 11, 'green')
         Text('3', ncd, (ncd.rect.centerx+85, ncd.rect.centery+96), 'arial', 11, 'green')
         Text('?', ncd, (ncd.rect.centerx+85, ncd.rect.centery+111), 'arial', 11, 'green')
-        Text('Unknown', ncd, (ncd.rect.centerx+157.5, ncd.rect.centery+96), 'arial', 11, 'grey')
-        Text('Unknown', ncd, (ncd.rect.centerx+157.5, ncd.rect.centery+111), 'arial', 11, 'grey')
+        Text('Survey', ncd, (ncd.rect.centerx+157.5, ncd.rect.centery+96), 'arial', 11, 'grey')
+        Text('Neutral', ncd, (ncd.rect.centerx+157.5, ncd.rect.centery+111), 'arial', 11, 'grey')
 
         return panels
 
     def draw_elements(panels:list):
         currentTime = pygame.time.get_ticks() # <------- USE FOR ANY TIMED EVENTS!!!
         global lastTime
+
+        def draw_readout(surface, rows, x=4, y=4, row_height=13, font=txt_font_small):
+            for label, value, color in rows:
+                txt_surf = font.render(label, True, pygame.Color('cyan'))
+                surface.blit(txt_surf, (x, y))
+                if value:
+                    val_surf = font.render(value, True, pygame.Color(color))
+                    surface.blit(val_surf, (x + 88, y))
+                y += row_height
+
+        def draw_text_rows(surface, rows, x=4, y=4, row_height=13, font=txt_font_small):
+            for text, color in rows:
+                txt_surf = font.render(text, True, pygame.Color(color))
+                surface.blit(txt_surf, (x, y))
+                y += row_height
+
+        def draw_status_table(surface, headers, rows, x, y, col_widths, row_height=13):
+            col_x = x
+            for idx, header in enumerate(headers):
+                txt_surf = txt_font_small.render(header, True, pygame.Color('cyan'))
+                surface.blit(txt_surf, (col_x, y))
+                col_x += col_widths[idx]
+            pygame.draw.line(surface, PANELGREY, (x, y + row_height), (x + sum(col_widths), y + row_height), 1)
+            for row_idx, row in enumerate(rows):
+                col_x = x
+                row_y = y + row_height + 2 + row_idx * row_height
+                for idx, cell in enumerate(row):
+                    color = 'yellow' if cell in ('CAUTION', 'LOW', 'HOLD') else 'green'
+                    txt_surf = txt_font_small.render(cell, True, pygame.Color(color))
+                    surface.blit(txt_surf, (col_x, row_y))
+                    col_x += col_widths[idx]
 
         primary = Panel.get_panel('Primary Display', panels); pri = primary.get_element('primary display')
             # SCIENCE CONSOLE
@@ -637,11 +682,11 @@ class Panel:
             headers = ['#', 'Status', 'TG', 'RAD', 'SS', 'REG. L', 'SYS. L', 'DETECT']
             headers_xpos = [15, 55, 102.5, 142.5, 182.5, 230, 292.5, 355]; headers_ypos = engC.rect.centery-88
             rows = [
-                ['1', 'Passive', '43', '', '43', '(6, 7)', '(49, 43)', ''],
-                ['2', 'Passive', '30', '', '30', '(2, 8)', '(51, 67)', ''],
-                ['3', 'Passive', '9', '', '9', '(2, 9)', '(52, 24)', ''],
-                ['4', 'Passive', '41', '', '41', '(0, 8)', '(21, 63)', ''],
-                ['5', 'Passive', '7', '', '7', '(0, 4)', '(21, 63)', ''],
+                ['1', 'Survey', '43', '12', '39', '(6, 7)', '(49, 43)', 'Bio'],
+                ['2', 'Relay', '30', '08', '35', '(2, 8)', '(51, 67)', 'Com'],
+                ['3', 'Scout', '09', '03', '10', '(2, 9)', '(52, 24)', 'Ore'],
+                ['4', 'Track', '41', '16', '45', '(0, 8)', '(21, 63)', 'Ship'],
+                ['5', 'Standby', '07', '00', '36', '(0, 4)', '(21, 63)', 'None'],
             ]
             row_ypos = engC.rect.centery-70.5; row_height = 14
             for i, header in enumerate(headers):
@@ -655,11 +700,11 @@ class Panel:
             headers = ['#', 'Mode', 'TG', 'SS#', 'R. LOC', 'S. LOC', 'Pw%', 'Status', 'S', 'X', 'sh', 'bs']
             headers_xpos = [15, 55, 97.5, 128, 166, 215, 257.5, 300, 332.5, 347.5, 362.5, 377.5]; headers_ypos = engC.rect.centery-88
             rows = [
-                ['1', 'Passive', 'SS-42', '', '(4, 6)', '', '100', 'Transit', '', '', '', ''],
-                ['2', 'Passive', 'SS-35', '', '(4, 6)', '', '100', 'Transit', '', '', '', ''],
-                ['3', 'Passive', 'SS-10', '', '(4, 6)', '', '100', 'Transit', '', '', '', ''],
-                ['4', 'Passive', 'SS-45', '', '(4, 6)', '', '100', 'Transit', '', '', '', ''],
-                ['5', 'Passive', 'SS-36', '', '(4, 6)', '', '100', 'Transit', '', '', '', ''],
+                ['1', 'Survey', 'SS-42', '043', '(4,6)', '(49,43)', '92', 'Mapping', 'Y', 'N', '3', '1'],
+                ['2', 'Relay', 'SS-35', '030', '(3,8)', '(51,67)', '81', 'Linked', 'Y', 'N', '2', '0'],
+                ['3', 'Scout', 'SS-10', '009', '(2,9)', '(52,24)', '64', 'Silent', 'N', 'Y', '1', '0'],
+                ['4', 'Track', 'SS-45', '041', '(0,8)', '(21,63)', '77', 'Contact', 'Y', 'N', '4', '2'],
+                ['5', 'Reserve', 'SS-36', '007', '(0,4)', '(21,63)', '100', 'Docked', 'N', 'N', '0', '0'],
             ]
             row_ypos = engC.rect.centery-70.5; row_height = 14
             for i, header in enumerate(headers):
@@ -937,113 +982,184 @@ class Panel:
 
 
         # Communication Console
-        global message_index, sub_message_index, report_index, sub_report_index
+        global message_index
 
         commC = Panel.get_panel("Communication Console", panels)
         leftDisplay = commC.get_element("status1")
         rightDisplay = commC.get_element("status2")
-        
-        
         comB = commC.get_element('Combined')
         mesB = commC.get_element('Messages')
         repB = commC.get_element('Reports')
 
-        def check_end_list():
-            global message_index, sub_message_index, report_index, sub_report_index
-            if message_index > len(messages):
-                message_index = 0
-            if sub_message_index > len(sub_messages):
-                sub_message_index = 0
-            if report_index > len(reports):
-                report_index = 0
-            if sub_report_index > len(sub_reports):
-                sub_report_index = 0
-
-        def draw_text(surfs1:list, surfs2:list):
+        def draw_comm_feed(left_surfs, right_surfs, limit):
+            visible_count = max(1, min(message_index, limit))
             y = 3
-            y2 = 3
-            
-            if commC.messageButton:
-                for i in range(message_index):
-                    if y > leftDisplay.rect.height - 13:
-                        y = 3
-                        pygame.draw.rect(leftDisplay.surf, 'black', leftDisplay.rect)
-                    leftDisplay.surf.blit(surfs1[i], (3,y))
+            for i in range(visible_count):
+                leftDisplay.surf.blit(left_surfs[i], (3, y))
+                rightDisplay.surf.blit(right_surfs[i], (3, y))
+                if y < leftDisplay.rect.height - 20:
                     y += 13
-                    
-                for i in range(sub_message_index):
-                    if y2 > rightDisplay.rect.height - 13:
-                        y2 = 3
-                        pygame.draw.rect(rightDisplay.surf, 'black', rightDisplay.rect)
-                    rightDisplay.surf.blit(surfs2[i], (3,y2))
-                    y2 += 13
 
-            elif commC.reportsButton:
-                for i in range(report_index):
-                    if y > leftDisplay.rect.height - 13:
-                        y = 3
-                        pygame.draw.rect(leftDisplay.surf, 'black', leftDisplay.rect)
-                    leftDisplay.surf.blit(surfs1[i], (3,y))
-                    y += 13
-                   
-                for i in range(sub_report_index):
-                    if y2 > rightDisplay.rect.height - 13:
-                        y2 = 3
-                        pygame.draw.rect(rightDisplay.surf, 'black', rightDisplay.rect)
-                    rightDisplay.surf.blit(surfs2[i], (3,y2))
-                    y2 += 13
-                       
-            elif commC.comboButton:
-                for i in range(message_index):
-                    if y > leftDisplay.rect.height - 13:
-                        y = 3
-                        pygame.draw.rect(leftDisplay.surf, 'black', leftDisplay.rect)
-                    leftDisplay.surf.blit(surfs1[i], (3,y))
-                    y += 13
-                    
-                for i in range(report_index):
-                    if y2 > rightDisplay.rect.height - 13:
-                        y2 = 3
-                        pygame.draw.rect(rightDisplay.surf, 'black', rightDisplay.rect)
-                    rightDisplay.surf.blit(surfs2[i], (3,y2))
-                    y2 += 13
-                   
-
-
-        if commC.messageButton: 
+        if commC.messageButton:
             mesB.color = pygame.Color(BUTTONPRESSED)
             mesB.font = txt_font_small
             comB.color = pygame.Color(BACKGREY); repB.color = pygame.Color(BACKGREY)
             comB.font = txt_font; repB.font = txt_font
 
-            if currentTime > (lastTime + 1000): # place holder statement delete when reading events from a file
-                message_index += 1; sub_message_index += 1; report_index += 1; sub_report_index += 1
+            limit = min(len(messages), len(sub_messages))
+            if currentTime > (lastTime + 900):
+                message_index = (message_index % limit) + 1
                 lastTime = currentTime
-                check_end_list()
-            draw_text(message_surfs, sub_message_surfs)
+            draw_comm_feed(message_surfs, sub_message_surfs, limit)
+            pygame.draw.rect(mesB.surf, 'red', (0,0,20,20))
         elif commC.reportsButton:
             repB.color = pygame.Color(BUTTONPRESSED)
             repB.font = txt_font_small
             comB.color = pygame.Color(BACKGREY); mesB.color = pygame.Color(BACKGREY)
             comB.font = txt_font; mesB.font= txt_font
 
-            if currentTime > (lastTime + 1000):
-                message_index += 1; sub_message_index += 1; report_index += 1; sub_report_index += 1
+            limit = min(len(reports), len(sub_reports))
+            if currentTime > (lastTime + 900):
+                message_index = (message_index % limit) + 1
                 lastTime = currentTime
-                check_end_list()
-            draw_text(report_surfs, sub_report_surfs)
+            draw_comm_feed(report_surfs, sub_report_surfs, limit)
         elif commC.comboButton:
             comB.color = pygame.Color(BUTTONPRESSED)
             comB.font = txt_font_small
             repB.color = pygame.Color(BACKGREY); mesB.color = pygame.Color(BACKGREY)
             repB.font = txt_font; mesB.font = txt_font
 
-            if currentTime > (lastTime + 1000):
-                message_index += 1; sub_message_index += 1; report_index += 1; sub_report_index += 1
+            limit = min(len(messages), len(reports))
+            if currentTime > (lastTime + 900):
+                message_index = (message_index % limit) + 1
                 lastTime = currentTime
-                check_end_list()
-            draw_text(message_surfs, report_surfs)
-                
+            draw_comm_feed(message_surfs, report_surfs, limit)
+
+        # Computer Display
+        computer_display = Panel.get_panel('Computer Display', panels)
+        computer_main = computer_display.get_element('computer display')
+        computer_options = computer_display.get_element('computer display options')
+        draw_text_rows(computer_options.surf, [
+            ('SHIP', 'red'),
+            ('NAV', 'green'),
+            ('SCI', 'green'),
+            ('TACT', 'green'),
+            ('CREW', 'green'),
+            ('LOG', 'green'),
+            ('ALERT', 'yellow'),
+        ], 8, 10, 24, txt_font_medium)
+        pygame.draw.rect(computer_main.surf, ALTPANELGREY, [4, 4, 467, 242])
+        draw_text_rows(computer_main.surf, [
+            ('COMPUTER QUERY: MISSION STATUS', 'cyan'),
+            ('--------------------------------', 'cyan'),
+        ], 10, 10, 14, txt_font_medium)
+        draw_readout(computer_main.surf, [
+            ('Stardate', '7421.6', 'green'),
+            ('Region', 'Gurth Outer Approach', 'green'),
+            ('Primary', 'recover convoy beacon', 'green'),
+            ('Threat', 'Krell raider pattern', 'yellow'),
+            ('Supply', '88 pct / 5.26 days', 'green'),
+            ('Crew', '275 active / 3 med hold', 'green'),
+            ('Computer', 'library core nominal', 'green'),
+            ('Recommendation', 'maintain shields manual', 'yellow'),
+        ], 12, 44, 21, txt_font_medium)
+        draw_status_table(computer_main.surf,
+            ['SYS', 'STATE', 'LOAD', 'NOTE'],
+            [
+                ['NAV', 'LOCK', '31%', 'SS-39A'],
+                ['ENG', 'NOM', '42%', 'reserve online'],
+                ['SCI', 'SCAN', '56%', 'class-M body'],
+                ['CMB', 'HOLD', '64%', 'weapons safe'],
+            ],
+            260, 48, [42, 52, 48, 96], 18)
+
+        # Strategic Command Console
+        stratigic_command_console = Panel.get_panel('Stratigic Command Console', panels)
+        escort_display = stratigic_command_console.get_element('escort display')
+        formation_display = stratigic_command_console.get_element('formation')
+        escort_fleet = stratigic_command_console.get_element('escort fleet')
+        fleet_command = stratigic_command_console.get_element('fleet command')
+        draw_status_table(escort_display.surf,
+            ['ID', 'TYPE', 'ORD'],
+            [
+                ['A1', 'FF', 'SCREEN'],
+                ['B2', 'DD', 'COVER'],
+                ['C3', 'SC', 'SCOUT'],
+                ['D4', 'TR', 'HOLD'],
+            ],
+            5, 6, [28, 42, 68], 15)
+        pygame.draw.circle(formation_display.surf, 'green', (40, 28), 5)
+        pygame.draw.circle(formation_display.surf, 'green', (20, 72), 4)
+        pygame.draw.circle(formation_display.surf, 'yellow', (60, 72), 4)
+        pygame.draw.line(formation_display.surf, 'cyan', (40, 33), (20, 72), 1)
+        pygame.draw.line(formation_display.surf, 'cyan', (40, 33), (60, 72), 1)
+        draw_text_rows(formation_display.surf, [('DELTA', 'cyan'), ('4.8 LY', 'green'), ('AFT ARC', 'yellow')], 18, 90, 12)
+        draw_status_table(escort_fleet.surf,
+            ['SHIP', 'RNG', 'STAT'],
+            [
+                ['MERR', '0.8', 'READY'],
+                ['AKIRA', '1.2', 'READY'],
+                ['HALE', '2.1', 'SCAN'],
+                ['TUG-7', '3.0', 'LOW'],
+            ],
+            6, 6, [45, 40, 64], 15)
+        draw_status_table(fleet_command.surf,
+            ['ORDER', 'TARGET', 'TIME', 'STATUS'],
+            [
+                ['SCREEN', 'CONVOY', '00:18', 'ACTIVE'],
+                ['JAM', 'RAIDER', '00:42', 'HOLD'],
+                ['ESCORT', 'TUG-7', '01:10', 'QUEUED'],
+                ['SURVEY', 'GURTH', '02:30', 'ACTIVE'],
+                ['RECALL', 'PROBE 3', '03:05', 'QUEUED'],
+            ],
+            8, 8, [82, 92, 58, 76], 17)
+
+        # Security Console
+        security_console = Panel.get_panel('Security Console', panels)
+        internal_security = security_console.get_element('internal security')
+        prisoner_status = security_console.get_element('prisoner status')
+        interogations = security_console.get_element('interogations')
+        draw_status_table(internal_security.surf,
+            ['DECK', 'AREA', 'STATE', 'TEAM'],
+            [
+                ['02', 'BRIDGE', 'CLEAR', 'A'],
+                ['05', 'ARMORY', 'LOCK', 'B'],
+                ['07', 'CARGO', 'CAUTION', 'C'],
+                ['09', 'MED BAY', 'CLEAR', 'D'],
+                ['12', 'SHUTTLE', 'CLEAR', 'E'],
+                ['15', 'BRIG', 'LOCK', 'F'],
+            ],
+            6, 7, [35, 78, 62, 40], 17)
+        draw_readout(prisoner_status.surf, [
+            ('Held', '02', 'green'),
+            ('Krell', '01', 'yellow'),
+            ('Trader', '01', 'green'),
+            ('Risk', 'LOW', 'green'),
+            ('Guard', 'BETA', 'green'),
+        ], 6, 8, 17)
+        draw_text_rows(interogations.surf, [
+            ('QUEUE', 'cyan'),
+            ('KR-17  00:12  legal hold', 'yellow'),
+            ('MN-04  00:35  witness', 'green'),
+            ('LOG SEALED', 'cyan'),
+            ('NEXT: security chief', 'green'),
+        ], 6, 8, 17)
+
+        # Commander's Log
+        commanders_log = Panel.get_panel('Commanders Log', panels)
+        log_display = commanders_log.get_element('commanders log')
+        draw_text_rows(log_display.surf, [
+            ('CAPTAIN L. RANE', 'cyan'),
+            ('STARDATE 7421.6', 'green'),
+            ('Convoy beacon recovered near', 'green'),
+            ('Gurth outer marker. Long range', 'green'),
+            ('sensors show one raider trail', 'yellow'),
+            ('but no weapons lock. Escorts', 'green'),
+            ('ordered into delta screen.', 'green'),
+            ('', 'green'),
+            ('Standing order: protect convoy,', 'cyan'),
+            ('avoid border escalation.', 'cyan'),
+        ], 8, 8, 18, txt_font_medium)
 
     # Combat Console
         showCombatC = True
@@ -1428,11 +1544,14 @@ class Panel:
             target_data = [
                 ['(3, 2)', '90°', '.9¥', 'PTT'],
             ]
+            target_data = [['(3, 2)', '090', '0.9c', 'PTT']]
             for i in range(0,1):
                 txt_surf = txt_font_small.render('             '.join(target_data[i]), True, 'green'); txt_rect = txt_surf.get_rect(center=(565, 408)); combatC.surf.blit(txt_surf,txt_rect)
                 # 13 spaces when joining strings, or split each string into individual items in list for better spacing
             # this is to match the coloring
             txt_surf = txt_font_small.render('¥', True, 'red'); txt_rect = txt_surf.get_rect(center=(591, 408)); combatC.surf.blit(txt_surf,txt_rect)
+            pygame.draw.rect(combatC.surf, ALTPANELGREY, [586, 402, 10, 12])
+            txt_surf = txt_font_small.render('c', True, 'red'); txt_rect = txt_surf.get_rect(center=(591, 408)); combatC.surf.blit(txt_surf,txt_rect)
             txt_surf = txt_font_small.render('PTT', True, 'red'); txt_rect = txt_surf.get_rect(center=(627, 408)); combatC.surf.blit(txt_surf,txt_rect)
             if combatC.targetBoard:
                 #pygame.draw.rect(combatC.surf, PANELGREY, [495, 369, 100, 100])

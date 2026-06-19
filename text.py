@@ -1,5 +1,4 @@
 import pygame
-from Panel import *
 pygame.font.init()
 pygame.display.init()
 class Text:
