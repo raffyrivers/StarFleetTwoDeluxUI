@@ -8,6 +8,7 @@ and other buttons in consoles
 for this version of the demo, UIs/GUIs are activated (displayed) via keybind, check initializations of panels or very bottom of panel for if statemnt blocks
 
 ## Requirements
+```
 python 3.12.*
 pip3
 ffmpeg ([INSTALL HERE](https://www.ffmpeg.org/download.html))
@@ -16,7 +17,7 @@ numpy
 PyAudio
 pygame
 pyvidplayer2
-
+```
 
 <b> Ffmpeg needs to be installed manually on Windows ([INSTALL HERE](https://www.ffmpeg.org/download.html)) </b>
 
