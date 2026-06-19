@@ -42,7 +42,7 @@ git clone https://github.com/raffyrivers/StarFleetTwoDeluxUI.git
 cd StarFleetTwoDeluxUI
 
 # Be sure to run python3.12 only!!!!
-python3.12 -m venv /path/to/venvfolder
+python -m venv /path/to/venvfolder
 
 source /path/to/venvfolder/bin/activate
 
