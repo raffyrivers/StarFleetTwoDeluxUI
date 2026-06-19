@@ -1,10 +1,55 @@
 # Star Fleet II Delux UI Showcase
 
-ffmpeg is required to for pyvidplayer2
+## Notes
+as of  7/15/25 there is no mouse control for this code, 
+mouse control needs to be added for buttons 
+ex. 'Combat Console' --> 'Shields' --> 'Auto', 'Manual', 'Battle Entry', 'Maximum'
+and other buttons in consoles
+for this version of the demo, UIs/GUIs are activated (displayed) via keybind, check initializations of panels or very bottom of panel for if statemnt blocks
 
-# as of  7/15/25 there is no mouse control for this code, 
-# mouse control needs to be added for buttons 
-# ex. 'Combat Console' --> 'Shields' --> 'Auto', 'Manual', 'Battle Entry', 'Maximum'
-# and other buttons in consoles
+##Requirements
+python 3.12.*
+pip3
+ffmpeg ([INSTALL HERE](https://www.ffmpeg.org/download.html))
+git 
+numpy
+PyAudio
+pygame
+pyvidplayer2
 
-# for this version of the demo, UIs/GUIs are activated (displayed) via keybind, check initializations of panels or very bottom of panel for if statemnt blocks 
+
+<b> Ffmpeg needs to be installed manually on Windows ([INSTALL HERE](https://www.ffmpeg.org/download.html))
+
+##Installation
+
+```
+git clone https://github.com/raffyrivers/StarFleetTwoDeluxUI.git
+
+# Change directory
+cd StarFleetTwoDeluxUI
+
+# pip install -r requirements.txt
+
+# Then run :)
+python main.py 
+
+```
+
+## Installation in virtual environment
+ 
+```
+
+git clone https://github.com/raffyrivers/StarFleetTwoDeluxUI.git
+
+# Change directory
+cd StarFleetTwoDeluxUI
+
+# Be sure to run python3.12 only!!!!
+python3.12 -m venv /path/to/venvfolder
+
+source /path/to/venvfolder/bin/activate
+
+pip install -r requirements.txt
+
+python main.py
+```
