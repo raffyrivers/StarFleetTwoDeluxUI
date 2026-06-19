@@ -20,7 +20,7 @@ pyvidplayer2
 
 <b> Ffmpeg needs to be installed manually on Windows ([INSTALL HERE](https://www.ffmpeg.org/download.html))
 
-##Installation
+## Installation
 
 ```
 git clone https://github.com/raffyrivers/StarFleetTwoDeluxUI.git
