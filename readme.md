@@ -11,12 +11,8 @@ for this version of the demo, UIs/GUIs are activated (displayed) via keybind, ch
 ```
 python 3.12.*
 pip3
-ffmpeg ([INSTALL HERE](https://www.ffmpeg.org/download.html))
+ffmpeg
 git 
-numpy
-PyAudio
-pygame
-pyvidplayer2
 ```
 
 <b> Ffmpeg needs to be installed manually on Windows ([INSTALL HERE](https://www.ffmpeg.org/download.html)) </b>
