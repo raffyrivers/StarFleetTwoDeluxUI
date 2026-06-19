@@ -7,7 +7,7 @@ ex. 'Combat Console' --> 'Shields' --> 'Auto', 'Manual', 'Battle Entry', 'Maximu
 and other buttons in consoles
 for this version of the demo, UIs/GUIs are activated (displayed) via keybind, check initializations of panels or very bottom of panel for if statemnt blocks
 
-##Requirements
+## Requirements
 python 3.12.*
 pip3
 ffmpeg ([INSTALL HERE](https://www.ffmpeg.org/download.html))
