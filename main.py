@@ -1,5 +1,5 @@
-from Panel import *
-from Status_bar import *
+from panel import *
+from status_bar import *
 import pygame
 from pygame.locals import *
 

@@ -1,8 +1,8 @@
 import pygame
 import math
-from Text import *
-from Status_bar import *
-from Display import *
+from text import *
+from status_bar import *
+from display import *
 import os
 pygame.init()
 

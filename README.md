@@ -61,6 +61,6 @@ python main.py
 
 - [ ] Add mouse support for panel buttons.
 - [ ] Replace remaining hardcoded placeholder data with a shared state model.
-- [ ] Split large `Panel.py` drawing sections into smaller console modules.
+- [ ] Split large `panel.py` drawing sections into smaller console modules.
 - [ ] Add bounds checks for text-heavy panels at smaller window sizes.
 - [ ] Add a simple startup check for missing FFmpeg/FFprobe.
