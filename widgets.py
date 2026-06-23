@@ -1,0 +1,249 @@
+"""UI widgets: framed panels, clickable buttons, displays, and status bars."""
+
+import pygame
+import core
+from core import (BLACK, PANEL_BG, FRAME, FRAME_DIM, BEVEL_LIGHT, BEVEL_DARK,
+                  BUTTON_FACE, BUTTON_ACTIVE, BUTTON_HOVER, CYAN, GREEN, RED,
+                  YELLOW, GREY, color, font, fit_text, text_line)
+
+# Every button registers here so the main loop can hit-test mouse clicks.
+BUTTONS = []
+
+
+def reset_buttons():
+    BUTTONS.clear()
+
+
+class Panel:
+    """A framed region with an optional tab label that hosts child elements."""
+
+    def __init__(self, x, y, width, height, tab_label="", tab_width=0):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.rect = pygame.Rect(0, 0, width, height)
+        self.surf = pygame.Surface((width, height)).convert()
+        self.tab_label = tab_label
+        self.tab_width = tab_width
+        self.elements = []
+
+    def add(self, element):
+        self.elements.append(element)
+        return element
+
+    def get(self, label):
+        for element in self.elements:
+            if getattr(element, "label", None) == label:
+                return element
+        return None
+
+    def draw_base(self):
+        """Phase 1: paint frame and reset child display surfaces."""
+        self.surf.fill(PANEL_BG)
+        pygame.draw.rect(self.surf, FRAME, self.rect, 2)
+        if self.width > 14 and self.height > 14:
+            pygame.draw.rect(self.surf, FRAME_DIM, self.rect.inflate(-8, -8), 1)
+        for element in self.elements:
+            element.prepare()
+
+    def finish(self, surface):
+        """Phase 3: layer displays, then buttons and text, then blit and tab."""
+        order = sorted(self.elements, key=lambda e: getattr(e, "z", 0))
+        for element in order:
+            element.draw()
+        surface.blit(self.surf, (self.x, self.y))
+        if self.tab_label:
+            tab_w = self.tab_width or min(self.width, len(self.tab_label) * 9 + 16)
+            tab = pygame.Rect(self.x, self.y - 16, tab_w, 18)
+            pygame.draw.rect(surface, PANEL_BG, tab)
+            pygame.draw.rect(surface, FRAME, tab, 2)
+            fit_text(surface, self.tab_label.upper(), tab, FRAME, 13)
+
+
+class Button:
+    """A bevelled, clickable button. Click and key both call on_toggle."""
+
+    def __init__(self, panel, rect, label, key=None, group=None,
+                 active=False, momentary=False, text_size=11, on_toggle=None):
+        self.panel = panel
+        self.local = pygame.Rect(rect)
+        self.label = label
+        self.key = key
+        self.group = group
+        self.active = active
+        self.momentary = momentary
+        self.text_size = text_size
+        self.on_toggle = on_toggle
+        self.hover = False
+        self.z = 2
+        panel.add(self)
+        BUTTONS.append(self)
+
+    def prepare(self):
+        pass
+
+    @property
+    def screen_rect(self):
+        return self.local.move(self.panel.x, self.panel.y)
+
+    def draw(self):
+        rect = self.local
+        if self.active:
+            face = BUTTON_ACTIVE
+        elif self.hover:
+            face = BUTTON_HOVER
+        else:
+            face = BUTTON_FACE
+        pygame.draw.rect(self.panel.surf, face, rect)
+        pygame.draw.line(self.panel.surf, BEVEL_LIGHT, rect.topleft, rect.topright)
+        pygame.draw.line(self.panel.surf, BEVEL_LIGHT, rect.topleft, rect.bottomleft)
+        pygame.draw.line(self.panel.surf, BEVEL_DARK, rect.bottomleft, rect.bottomright)
+        pygame.draw.line(self.panel.surf, BEVEL_DARK, rect.topright, rect.bottomright)
+        text_color = "white" if self.active else FRAME if face == BUTTON_FACE else "white"
+        if self.label:
+            fit_text(self.panel.surf, self.label, rect, text_color, self.text_size)
+
+    def activate(self):
+        """Toggle (or set, for grouped radios) and notify the handler."""
+        if self.group is not None:
+            for other in BUTTONS:
+                if other.group == self.group and other is not self:
+                    other.active = False
+            self.active = True if not self.momentary else self.active
+        else:
+            self.active = not self.active
+        if self.on_toggle:
+            self.on_toggle(self)
+
+
+class Text:
+    """Static label drawn onto a panel."""
+
+    def __init__(self, panel, pos, text, fg="cyan", size=11):
+        self.panel = panel
+        self.pos = pos
+        self.label = text
+        self.fg = fg
+        self.size = size
+        self.z = 3
+        panel.add(self)
+
+    def prepare(self):
+        pass
+
+    def draw(self):
+        text_line(self.panel.surf, self.label, self.pos, self.fg, self.size)
+
+
+class Display:
+    """A sub-screen surface with a recessed border that elements draw onto."""
+
+    def __init__(self, panel, label, size, pos, double_border=True):
+        self.panel = panel
+        self.label = label
+        self.pos = pos
+        self.size = size
+        self.double_border = double_border
+        self.surf = pygame.Surface(size).convert()
+        self.rect = self.surf.get_rect()
+        self.z = 1
+        panel.add(self)
+
+    def prepare(self):
+        self.surf.fill(BLACK)
+
+    def clear(self):
+        self.surf.fill(BLACK)
+
+    def draw(self):
+        pygame.draw.rect(self.surf, FRAME, self.rect, 1)
+        if self.double_border and self.rect.width > 12 and self.rect.height > 12:
+            pygame.draw.rect(self.surf, FRAME_DIM, self.rect.inflate(-6, -6), 1)
+        self.panel.surf.blit(self.surf, self.pos)
+
+
+class CircleDisplay(Display):
+    """A round scope display, used for the sensor sweep."""
+
+    def __init__(self, panel, label, pos, radius):
+        size = (radius * 2, radius * 2)
+        super().__init__(panel, label, size, pos)
+        self.radius = radius
+
+    def draw(self):
+        pygame.draw.circle(self.surf, FRAME, self.rect.center, self.radius, 2)
+        self.panel.surf.blit(self.surf, self.pos)
+
+
+class StatusBar:
+    """Top alert indicators and bottom console selector tabs."""
+
+    TOP_LABELS = ["LowPwr", "LowSup", "LowTime", "Medical",
+                  "SecAlt", "Mines", "Distress", "HullPn"]
+    MENU_LABELS = ["NAV", "ENG", "CMB", "CMP", "SEC", "COM", "STG", "SCI", "CTL"]
+    MENU_HIGHLIGHT = [0, 0, 2, 0, 0, 2, 2, 2, 2]
+
+    def __init__(self, label, size=(80, 18), highlight=None):
+        self.label = label
+        self.size = size
+        self.surf = pygame.Surface(size).convert()
+        self.rect = self.surf.get_rect()
+        self.fill = BLACK
+        self.highlight = highlight
+        self.alerting = False
+
+    def _draw_label(self):
+        f = font(13, True)
+        total = sum(f.size(c)[0] for c in self.label)
+        x = (self.rect.width - total) // 2
+        y = (self.rect.height - f.get_height()) // 2
+        for i, ch in enumerate(self.label):
+            if self.highlight == i:
+                ch_color = RED
+            elif self.fill != BLACK:
+                ch_color = BLACK
+            else:
+                ch_color = GREY
+            glyph = f.render(ch, True, ch_color)
+            self.surf.blit(glyph, (x, y))
+            x += glyph.get_width()
+
+    def draw(self, surface, pos):
+        self.surf.fill(BLACK)
+        pygame.draw.rect(self.surf, self.fill, self.rect, 0, 2)
+        self._draw_label()
+        surface.blit(self.surf, pos)
+
+    @staticmethod
+    def make_top():
+        return [StatusBar(label) for label in StatusBar.TOP_LABELS]
+
+    @staticmethod
+    def make_menu():
+        return [StatusBar(label, (71, 18), StatusBar.MENU_HIGHLIGHT[i])
+                for i, label in enumerate(StatusBar.MENU_LABELS)]
+
+    @staticmethod
+    def sequence_flash(bars):
+        """Run a green sweep across the alert bars unless one is latched red."""
+        slot = (pygame.time.get_ticks() % 800) // 100
+        for i, bar in enumerate(bars):
+            if bar.alerting:
+                bar.fill = RED
+            elif i == slot:
+                bar.fill = GREEN
+            else:
+                bar.fill = BLACK
+
+    @staticmethod
+    def draw_bars(surface, top, menu, notepad):
+        x = 660
+        for bar in top:
+            bar.draw(surface, (x, 10))
+            x += 82
+        x = 660
+        for bar in menu:
+            bar.draw(surface, (x, 1050))
+            x += 73
+        notepad.draw(surface, ((surface.get_width() - notepad.size[0]) // 2, 1015))
