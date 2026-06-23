@@ -2,7 +2,7 @@
 
 import pygame
 import core
-from core import (BLACK, PANEL_BG, FRAME, FRAME_DIM, BEVEL_LIGHT, BEVEL_DARK,
+from core import (BLACK, SHELL_BG, PANEL_BG, FRAME, FRAME_DIM, BEVEL_LIGHT, BEVEL_DARK,
                   BUTTON_FACE, BUTTON_ACTIVE, BUTTON_HOVER, CYAN, GREEN, RED,
                   YELLOW, GREY, color, font, fit_text, text_line)
 
@@ -41,9 +41,10 @@ class Panel:
     def draw_base(self):
         """Phase 1: paint frame and reset child display surfaces."""
         self.surf.fill(PANEL_BG)
-        pygame.draw.rect(self.surf, FRAME, self.rect, 2)
+        pygame.draw.rect(self.surf, BEVEL_LIGHT, self.rect, 2)
+        pygame.draw.rect(self.surf, FRAME_DIM, self.rect.inflate(-2, -2), 1)
         if self.width > 14 and self.height > 14:
-            pygame.draw.rect(self.surf, FRAME_DIM, self.rect.inflate(-8, -8), 1)
+            pygame.draw.rect(self.surf, FRAME, self.rect.inflate(-8, -8), 1)
         for element in self.elements:
             element.prepare()
 
@@ -57,8 +58,11 @@ class Panel:
             tab_w = self.tab_width or min(self.width, len(self.tab_label) * 9 + 16)
             tab = pygame.Rect(self.x, self.y - 16, tab_w, 18)
             pygame.draw.rect(surface, PANEL_BG, tab)
-            pygame.draw.rect(surface, FRAME, tab, 2)
-            fit_text(surface, self.tab_label.upper(), tab, FRAME, 13)
+            pygame.draw.line(surface, BEVEL_LIGHT, tab.topleft, tab.topright, 2)
+            pygame.draw.line(surface, BEVEL_LIGHT, tab.topleft, tab.bottomleft, 2)
+            pygame.draw.line(surface, FRAME_DIM, tab.bottomleft, tab.bottomright, 2)
+            pygame.draw.line(surface, FRAME_DIM, tab.topright, tab.bottomright, 2)
+            fit_text(surface, self.tab_label, tab.inflate(-6, 0), BLACK, 13)
 
 
 class Button:
@@ -100,7 +104,7 @@ class Button:
         pygame.draw.line(self.panel.surf, BEVEL_LIGHT, rect.topleft, rect.bottomleft)
         pygame.draw.line(self.panel.surf, BEVEL_DARK, rect.bottomleft, rect.bottomright)
         pygame.draw.line(self.panel.surf, BEVEL_DARK, rect.topright, rect.bottomright)
-        text_color = "white" if self.active else FRAME if face == BUTTON_FACE else "white"
+        text_color = BLACK if self.active or face == BUTTON_FACE else BLACK
         if self.label:
             fit_text(self.panel.surf, self.label, rect, text_color, self.text_size)
 
@@ -157,7 +161,7 @@ class Display:
         self.surf.fill(BLACK)
 
     def draw(self):
-        pygame.draw.rect(self.surf, FRAME, self.rect, 1)
+        pygame.draw.rect(self.surf, BEVEL_LIGHT, self.rect, 2)
         if self.double_border and self.rect.width > 12 and self.rect.height > 12:
             pygame.draw.rect(self.surf, FRAME_DIM, self.rect.inflate(-6, -6), 1)
         self.panel.surf.blit(self.surf, self.pos)
@@ -172,7 +176,7 @@ class CircleDisplay(Display):
         self.radius = radius
 
     def draw(self):
-        pygame.draw.circle(self.surf, FRAME, self.rect.center, self.radius, 2)
+        pygame.draw.circle(self.surf, BEVEL_LIGHT, self.rect.center, self.radius, 2)
         self.panel.surf.blit(self.surf, self.pos)
 
 
@@ -201,17 +205,20 @@ class StatusBar:
         for i, ch in enumerate(self.label):
             if self.highlight == i:
                 ch_color = RED
-            elif self.fill != BLACK:
-                ch_color = BLACK
             else:
-                ch_color = GREY
+                ch_color = BLACK
             glyph = f.render(ch, True, ch_color)
             self.surf.blit(glyph, (x, y))
             x += glyph.get_width()
 
     def draw(self, surface, pos):
-        self.surf.fill(BLACK)
-        pygame.draw.rect(self.surf, self.fill, self.rect, 0, 2)
+        self.surf.fill(SHELL_BG)
+        face = BUTTON_FACE if self.fill == BLACK else self.fill
+        pygame.draw.rect(self.surf, face, self.rect, 0, 3)
+        pygame.draw.line(self.surf, BEVEL_LIGHT, self.rect.topleft, self.rect.topright)
+        pygame.draw.line(self.surf, BEVEL_LIGHT, self.rect.topleft, self.rect.bottomleft)
+        pygame.draw.line(self.surf, BEVEL_DARK, self.rect.bottomleft, self.rect.bottomright)
+        pygame.draw.line(self.surf, BEVEL_DARK, self.rect.topright, self.rect.bottomright)
         self._draw_label()
         surface.blit(self.surf, pos)
 
@@ -234,7 +241,7 @@ class StatusBar:
             elif i == slot:
                 bar.fill = GREEN
             else:
-                bar.fill = BLACK
+                bar.fill = GREEN
 
     @staticmethod
     def draw_bars(surface, top, menu, notepad):

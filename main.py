@@ -172,7 +172,7 @@ class Cockpit:
                         if not (event.type == KEYDOWN and event.key == pygame.K_F1)]
         if self.help_visible:
             video_events = []
-        self.canvas.fill(core.BLACK)
+        self.canvas.fill(core.SHELL_BG)
         for panel in self.panels:
             panel.draw_base()
         cockpit.draw(self.state, now)
@@ -202,7 +202,7 @@ class Cockpit:
             self.display.blit(self.canvas, (0, 0))
         else:
             view.center = self.display.get_rect().center
-            self.display.fill(core.BLACK)
+            self.display.fill(core.SHELL_BG)
             self.display.blit(pygame.transform.smoothscale(self.canvas, view.size), view)
         pygame.display.flip()
 

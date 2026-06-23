@@ -7,29 +7,30 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ASSET_DIR = os.path.join(BASE_DIR, "assets")
 FONT_NAME = "couriernew"
 
-# Console palette tuned to the Star Fleet II Deluxe command screen.
+# Console palette tuned to the gray Star Fleet II Deluxe command screen.
 BLACK = (0, 0, 0)
-PANEL_BG = (6, 7, 10)
-FRAME = (185, 50, 28)
-FRAME_DIM = (96, 30, 18)
-BEVEL_LIGHT = (150, 60, 40)
-BEVEL_DARK = (70, 22, 12)
-BUTTON_FACE = (24, 12, 9)
-BUTTON_ACTIVE = (35, 42, 180)
-BUTTON_HOVER = (40, 18, 12)
+SHELL_BG = (154, 154, 151)
+PANEL_BG = (205, 203, 195)
+FRAME = (238, 238, 232)
+FRAME_DIM = (92, 92, 88)
+BEVEL_LIGHT = (255, 255, 250)
+BEVEL_DARK = (112, 112, 108)
+BUTTON_FACE = (214, 213, 207)
+BUTTON_ACTIVE = (64, 224, 34)
+BUTTON_HOVER = (184, 226, 224)
 
-CYAN = (92, 204, 216)
-GREEN = (86, 176, 63)
-RED = (224, 66, 38)
+CYAN = (0, 145, 142)
+GREEN = (66, 225, 41)
+RED = (190, 22, 28)
 YELLOW = (245, 236, 82)
-GREY = (160, 160, 160)
-MAGENTA = (185, 50, 185)
-WHITE = (220, 220, 220)
+GREY = (96, 96, 94)
+MAGENTA = (238, 26, 222)
+WHITE = (232, 232, 226)
 
 NAMED = {
     "cyan": CYAN, "green": GREEN, "red": RED, "yellow": YELLOW,
     "grey": GREY, "gray": GREY, "magenta": MAGENTA, "white": WHITE,
-    "black": BLACK, "frame": FRAME,
+    "black": BLACK, "frame": FRAME, "panel": PANEL_BG,
 }
 
 _FONTS = {}

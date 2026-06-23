@@ -613,7 +613,7 @@ def _draw_weapons(panel, state):
         tag_box = pygame.Rect(box.x + 6, y, 44, 16)
         pygame.draw.rect(panel.surf, CYAN, tag_box)
         fit_text(panel.surf, tag, tag_box, BLACK, 10)
-        fit_text(panel.surf, val, [box.x + 56, y, 104, 16], WHITE, 10, align="left")
+        fit_text(panel.surf, val, [box.x + 56, y, 104, 16], GREY, 10, align="left")
     info = pygame.Rect(box.x + 6, box.y + 92, 153, 30)
     fit_text(panel.surf, "Bmb: N   Qty: 24   ECM: Y", info, GREEN, 10, align="left")
 
