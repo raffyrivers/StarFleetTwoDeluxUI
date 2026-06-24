@@ -121,6 +121,7 @@ def _build_primary():
     panel.lbl_left = pygame.Rect(255, 344, 84, 18)
     Button(panel, (360, 333, 64, 18), "REST", text_size=11)
     Button(panel, (360, 356, 64, 18), "Sim Freeze", text_size=11)
+    Button(panel, (430, 356, 105, 18), "Help F1/Ctrl+H", text_size=10)
 
 
 def _build_science():

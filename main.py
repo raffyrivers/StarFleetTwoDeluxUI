@@ -105,6 +105,9 @@ class Cockpit:
         if button.label == "SNAP":
             button.active = False
             self.snapshot_pending = True
+        if button.label == "Help F1/Ctrl+H":
+            button.active = False
+            self.help_visible = True
         if button.panel is cockpit.P["Primary Display"] and button.label == "REST":
             pass
 
