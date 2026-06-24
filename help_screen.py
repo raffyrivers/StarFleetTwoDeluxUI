@@ -4,6 +4,13 @@ import pygame
 
 import core
 
+HELP_BG = (16, 18, 18)
+HELP_PANEL = (28, 31, 31)
+HELP_PANEL_ALT = (36, 39, 38)
+HELP_BORDER = (214, 213, 207)
+HELP_TEXT = (230, 232, 222)
+HELP_MUTED = (166, 170, 164)
+
 
 SECTIONS = (
     ("GENERAL", (
@@ -46,47 +53,53 @@ def _keycap(surface, rect, label):
     pygame.draw.line(surface, core.BEVEL_LIGHT, rect.topleft, rect.bottomleft)
     pygame.draw.line(surface, core.BEVEL_DARK, rect.bottomleft, rect.bottomright)
     pygame.draw.line(surface, core.BEVEL_DARK, rect.topright, rect.bottomright)
-    core.fit_text(surface, label, rect.inflate(-10, -2), core.WHITE, 18)
+    core.fit_text(surface, label, rect.inflate(-10, -2), core.BLACK, 18)
 
 
 def _section(surface, rect, title, rows):
     rect = pygame.Rect(rect)
-    pygame.draw.rect(surface, core.PANEL_BG, rect)
-    pygame.draw.rect(surface, core.FRAME_DIM, rect, 1)
+    pygame.draw.rect(surface, HELP_PANEL, rect)
+    pygame.draw.rect(surface, HELP_BORDER, rect, 1)
+    pygame.draw.rect(surface, core.FRAME_DIM, rect.inflate(-6, -6), 1)
 
-    title_rect = pygame.Rect(rect.x + 18, rect.y - 12, 0, 25)
+    title_rect = pygame.Rect(rect.x + 18, rect.y - 13, 0, 26)
     title_font = core.font(18, True)
-    title_label = title_font.render(title, True, core.FRAME)
-    title_rect.width = title_label.get_width() + 18
-    pygame.draw.rect(surface, core.PANEL_BG, title_rect)
-    surface.blit(title_label, (title_rect.x + 9, title_rect.y + 2))
+    title_label = title_font.render(title, True, core.GREEN)
+    title_rect.width = title_label.get_width() + 20
+    pygame.draw.rect(surface, HELP_PANEL, title_rect)
+    pygame.draw.rect(surface, HELP_BORDER, title_rect, 1)
+    surface.blit(title_label, (title_rect.x + 10, title_rect.y + 3))
 
-    row_h = (rect.height - 34) / len(rows)
-    key_w = min(210, rect.width * 0.36)
+    body_top = rect.y + 28
+    body_height = rect.height - 42
+    row_h = max(34, body_height // len(rows))
+    key_w = min(230, int(rect.width * 0.36))
     for index, (key, description) in enumerate(rows):
-        y = round(rect.y + 24 + index * row_h)
-        key_rect = pygame.Rect(rect.x + 20, y + 4, key_w, min(32, row_h - 9))
+        row = pygame.Rect(rect.x + 16, body_top + index * row_h, rect.width - 32, row_h)
+        if index % 2:
+            pygame.draw.rect(surface, HELP_PANEL_ALT, row)
+        key_rect = pygame.Rect(row.x + 8, row.y + (row_h - 28) // 2, key_w, 28)
         _keycap(surface, key_rect, key)
-        text_rect = pygame.Rect(key_rect.right + 18, y, rect.right - key_rect.right - 34, row_h)
-        core.fit_text(surface, description, text_rect, core.CYAN, 18, align="left")
+        text_rect = pygame.Rect(key_rect.right + 22, row.y, row.right - key_rect.right - 28, row_h)
+        core.fit_text(surface, description, text_rect, HELP_TEXT, 18, align="left")
 
 
 def draw(surface):
     """Draw the help screen over the completed cockpit frame."""
     veil = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
-    veil.fill((0, 0, 0, 238))
+    veil.fill((0, 0, 0, 210))
     surface.blit(veil, (0, 0))
 
     frame = pygame.Rect(150, 80, surface.get_width() - 300, surface.get_height() - 160)
-    pygame.draw.rect(surface, core.PANEL_BG, frame)
-    pygame.draw.rect(surface, core.FRAME, frame, 2)
+    pygame.draw.rect(surface, HELP_BG, frame)
+    pygame.draw.rect(surface, HELP_BORDER, frame, 2)
     pygame.draw.rect(surface, core.FRAME_DIM, frame.inflate(-12, -12), 1)
 
     core.text_line(surface, "COMMAND REFERENCE", (surface.get_width() // 2, 112),
-                   core.FRAME, 34, True, "center")
+                   core.GREEN, 34, True, "center")
     core.text_line(surface, "KRELLAN BATTLECRUISER CONTROL SYSTEMS",
-                   (surface.get_width() // 2, 154), core.GREY, 15, True, "center")
-    pygame.draw.line(surface, core.FRAME_DIM, (190, 187), (1730, 187), 1)
+                   (surface.get_width() // 2, 154), HELP_MUTED, 15, True, "center")
+    pygame.draw.line(surface, HELP_BORDER, (190, 187), (1730, 187), 1)
 
     left = pygame.Rect(195, 220, 730, 285)
     right = pygame.Rect(995, 220, 730, 285)
