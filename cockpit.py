@@ -6,10 +6,12 @@ always fits its box and the code stays compact.
 """
 
 import math
+import random
 import pygame
 import core
-from core import (BLACK, PANEL_BG, FRAME, FRAME_DIM, CYAN, GREEN, RED, YELLOW,
-                  GREY, MAGENTA, WHITE, color, font, fit_text, text_line, asset)
+from core import (BLACK, PANEL_BG, FRAME, FRAME_DIM, BUTTON_FACE, CYAN, GREEN,
+                  RED, YELLOW, GREY, MAGENTA, WHITE, color, font, fit_text,
+                  text_line, asset)
 from widgets import Panel, Button, Text, Display, CircleDisplay, StatusBar
 from video import VideoDisplay
 
@@ -115,6 +117,9 @@ def _build_primary():
     panel = P["Primary Display"]
     video = VideoDisplay(panel, "primary", (645, 320), (5, 5))
     video.set_videos(["DeepSpace.mp4", "EarthOrbit.mp4"])
+    video.fallback.label = "EARTH ORBIT"
+    if len(video.sources) > 1:
+        video.index = 1
     Text(panel, (5, 350), "Msn Elapsed", "cyan", 11)
     panel.lbl_elapsed = pygame.Rect(95, 344, 84, 18)
     Text(panel, (190, 350), "Time Left", "cyan", 11)
@@ -335,12 +340,22 @@ def _draw_navigation():
         for gy in range(0, disp.rect.height, 21):
             pygame.draw.line(grid, (255, 255, 255, 40), (0, gy), (disp.rect.width, gy))
         disp.surf.blit(grid, (0, 0))
+    ocx, ocy = orbit.rect.center
+    for radius, ring_color in [(86, (20, 32, 68)), (62, (26, 38, 88)),
+                               (42, (24, 70, 42)), (34, (30, 150, 54))]:
+        pygame.draw.circle(orbit.surf, ring_color, (ocx, ocy), radius, 2)
+    pygame.draw.circle(orbit.surf, (24, 88, 150), (ocx, ocy), 23)
+    pygame.draw.ellipse(orbit.surf, (40, 148, 65), (ocx - 13, ocy - 10, 18, 10))
+    pygame.draw.ellipse(orbit.surf, (52, 165, 75), (ocx + 2, ocy + 2, 14, 9))
+    pygame.draw.arc(orbit.surf, (160, 180, 210), (ocx - 21, ocy - 17, 42, 34), 0.4, 2.8, 1)
     cx, cy = system.rect.center
     pygame.draw.circle(system.surf, RED, (cx, cy), 90, 1)
     pygame.draw.circle(system.surf, (60, 120, 220), (cx, cy), 55, 1)
     pygame.draw.circle(system.surf, YELLOW, (cx, cy), 8)
     pygame.draw.circle(system.surf, (255, 150, 60), (cx + 70, cy - 30), 5)
     pygame.draw.circle(system.surf, CYAN, (cx - 38, cy + 36), 4)
+    text_line(system.surf, "Gurth", (cx - 45, cy - 34), (90, 100, 255), 9)
+    text_line(system.surf, "Truth", (cx + 58, cy - 48), RED, 9)
     for label, dx, dy in [("N", cx, 10), ("S", cx, disp.rect.height - 10),
                           ("E", disp.rect.width - 12, cy), ("W", 12, cy)]:
         text_line(orbit.surf, label, (dx, dy), CYAN, 10, align="center")
@@ -371,13 +386,23 @@ def _draw_star_map():
         img = pygame.transform.smoothscale(asset("WarMap.png"), disp.size)
         disp.surf.blit(img, (0, 0))
     else:
-        grid = pygame.Surface(disp.size, pygame.SRCALPHA)
-        for gx in range(0, disp.rect.width, 24):
-            pygame.draw.line(grid, (50, 80, 200, 60), (gx, 0), (gx, disp.rect.height))
-        for gy in range(0, disp.rect.height, 24):
-            pygame.draw.line(grid, (50, 80, 200, 60), (0, gy), (disp.rect.width, gy))
-        disp.surf.blit(grid, (0, 0))
-        text_line(disp.surf, "MERCATOR MAP", (8, 6), CYAN, 11)
+        rng = random.Random(74216)
+        for _ in range(260):
+            x = rng.randrange(8, disp.rect.width - 8)
+            y = rng.randrange(14, disp.rect.height - 8)
+            shade = rng.randrange(40, 150)
+            disp.surf.set_at((x, y), (shade, shade, shade))
+        star_colors = [GREEN, CYAN, YELLOW, RED, MAGENTA, (120, 160, 255), WHITE]
+        for _ in range(55):
+            x = rng.randrange(12, disp.rect.width - 12)
+            y = rng.randrange(22, disp.rect.height - 12)
+            radius = 1 if rng.random() < 0.82 else 2
+            pygame.draw.circle(disp.surf, star_colors[rng.randrange(len(star_colors))],
+                               (x, y), radius)
+        pygame.draw.rect(disp.surf, (26, 26, 26), (0, 0, disp.rect.width, 14))
+        for i, label in enumerate(("0", "5", "10", "15", "20", "25", "30", "35")):
+            fit_text(disp.surf, label, [8 + i * 53, 0, 26, 13], CYAN, 9)
+        pygame.draw.rect(disp.surf, MAGENTA, (205, 80, 12, 12), 2)
 
 
 def _draw_status_indicators():
@@ -390,25 +415,43 @@ def _draw_status_indicators():
 def _draw_computer():
     panel = P["Computer Display"]
     options = panel.get("options")
-    options.surf.fill(BLACK)
-    text_rows(options.surf, [
-        ("SHIP", "red"), ("NAV", "green"), ("SCI", "green"), ("TACT", "green"),
-        ("CREW", "green"), ("LOG", "green"), ("ALERT", "yellow"),
-    ], 8, 12, 24, 11)
+    options.surf.fill(PANEL_BG)
+    menu = ["Combat Stats", "Information", "Landing Party", "Planets", "Star Systems",
+            "Bases", "Intelligence", "Reference Lib", "Self-Destruct", "Special Services"]
+    for i, label in enumerate(menu):
+        rect = pygame.Rect(6, 10 + i * 22, 78, 18)
+        face = BUTTON_FACE if i != 4 else FRAME
+        pygame.draw.rect(options.surf, face, rect)
+        pygame.draw.rect(options.surf, FRAME_DIM, rect, 1)
+        fg = RED if "Destruct" in label else BLACK
+        fit_text(options.surf, label, rect.inflate(-4, 0), fg, 9)
     screen = panel.get("screen")
     screen.surf.fill(BLACK)
-    text_rows(screen.surf, [("COMPUTER QUERY: MISSION STATUS", "cyan"),
-                            ("-" * 32, "cyan")], 10, 8, 14, 11)
-    readout(screen.surf, [
-        ("Stardate", "7421.6", GREEN), ("Base", "Starfort SF-1", GREEN),
-        ("Ship", "Klagar-class BC", GREEN), ("Mission", "training patrol", GREEN),
-        ("Torps", "24 loaded", GREEN), ("Power", "4000 units", GREEN),
-        ("Supplies", "1000 tons", GREEN), ("Exec", "briefing active", YELLOW),
-    ], 12, 44, 21, 12, 70)
-    table(screen.surf, ["SYS", "STATE", "CAP", "NOTE"], [
-        ["NAV", "DOCK", "100", "SF-1"], ["ENG", "READY", "4000", "power"],
-        ["CMB", "ARM", "24", "torps"], ["TRP", "READY", "100", "beam"],
-    ], 282, 46, [36, 50, 40, 78], 18, 11)
+    fit_text(screen.surf, "STAR SYSTEM DATABASE", [4, 4, screen.rect.width - 8, 16],
+             WHITE, 10)
+    headers = ["SS", "Rx", "Ry", "Cls", "S", "Plt"]
+    classes = ["G", "M", "B", "K", "F", "A", "D", "O"]
+    for block in range(4):
+        x = 8 + block * 114
+        for i, head in enumerate(headers):
+            fit_text(screen.surf, head, [x + i * 18, 22, 17, 11], CYAN, 8)
+        pygame.draw.line(screen.surf, FRAME_DIM, (x, 35), (x + 104, 35), 1)
+        for row in range(15):
+            system_id = block * 15 + row + 1
+            y = 38 + row * 13
+            cells = [
+                f"{system_id:02d}", f"{(system_id * 7) % 50}",
+                f"{(system_id * 11) % 50}", classes[system_id % len(classes)],
+                "N" if system_id % 5 else "H", str((system_id * 3) % 4),
+            ]
+            for i, cell in enumerate(cells):
+                fg = RED if cell == "H" else GREEN
+                if i == 3:
+                    fg = MAGENTA if cell in ("B", "O") else YELLOW
+                fit_text(screen.surf, cell, [x + i * 18, y, 17, 11], fg, 8)
+    pygame.draw.rect(screen.surf, FRAME_DIM, (4, 18, screen.rect.width - 8, 222), 1)
+    fit_text(screen.surf, "Status:  SS-39A Gurth   org: 21/d 0:c 10",
+             [8, 230, screen.rect.width - 16, 14], CYAN, 9, align="left")
 
 
 def _draw_data():
@@ -464,10 +507,18 @@ def _draw_probes(panel, state):
 
 def _draw_damage(panel, state):
     disp = panel.get("velocity")  # rightmost display hosts the dynamic ship
-    # Damage detail is drawn directly on the panel beside the velocity column.
-    base_x = 386
+    disp.surf.fill(BLACK)
+    base_x = 6
     img = pygame.transform.smoothscale(asset("shipdmg.png"), (130, 95))
-    panel.surf.blit(img, (base_x + 4, 30))
+    disp.surf.blit(img, (base_x + 4, 30))
+    hull_shape = [(44, 78), (78, 54), (138, 44), (196, 62), (222, 80),
+                  (196, 98), (138, 108), (78, 96)]
+    pygame.draw.polygon(disp.surf, (35, 178, 45), hull_shape)
+    pygame.draw.polygon(disp.surf, (12, 85, 20), hull_shape, 2)
+    for y in range(56, 102, 8):
+        pygame.draw.line(disp.surf, (95, 245, 95), (72, y), (202, y), 1)
+    pygame.draw.rect(disp.surf, (20, 20, 20), (18, 72, 44, 16))
+    pygame.draw.rect(disp.surf, FRAME_DIM, (18, 72, 44, 16), 1)
     systems_left = ["CMPTR", "S/L ENG", "HYP ENG", "SRS", "LRS", "SHD CTL"]
     systems_right = ["TRP CTL", "PHS CTL", "TELEPRT", "COM CTL", "TRAC BM", "PLS"]
     palette = {1: GREEN, 2: YELLOW, 3: RED, 4: (40, 40, 40)}
@@ -476,18 +527,18 @@ def _draw_damage(panel, state):
     top = 138
     for i, name in enumerate(systems_left):
         rect = pygame.Rect(base_x + 4, top + i * 13, 70, 12)
-        pygame.draw.rect(panel.surf, fg, rect)
-        pygame.draw.rect(panel.surf, FRAME_DIM, rect, 1)
-        fit_text(panel.surf, name, rect, text_fg, 9, align="left")
+        pygame.draw.rect(disp.surf, fg, rect)
+        pygame.draw.rect(disp.surf, FRAME_DIM, rect, 1)
+        fit_text(disp.surf, name, rect, text_fg, 9, align="left")
     for i, name in enumerate(systems_right):
-        rect = pygame.Rect(base_x + 160, top + i * 13, 70, 12)
-        pygame.draw.rect(panel.surf, fg, rect)
-        pygame.draw.rect(panel.surf, FRAME_DIM, rect, 1)
-        fit_text(panel.surf, name, rect, text_fg, 9, align="left")
+        rect = pygame.Rect(base_x + 154, top + i * 13, 62, 12)
+        pygame.draw.rect(disp.surf, fg, rect)
+        pygame.draw.rect(disp.surf, FRAME_DIM, rect, 1)
+        fit_text(disp.surf, name, rect, text_fg, 9, align="left")
     hull = pygame.Rect(base_x + 78, top, 78, 77)
-    pygame.draw.rect(panel.surf, fg, hull)
-    pygame.draw.rect(panel.surf, FRAME_DIM, hull, 1)
-    fit_text(panel.surf, "HULL", hull, text_fg, 12)
+    pygame.draw.rect(disp.surf, fg, hull)
+    pygame.draw.rect(disp.surf, FRAME_DIM, hull, 1)
+    fit_text(disp.surf, "HULL", hull, text_fg, 12)
 
 
 def _draw_energy(panel, state):
@@ -508,12 +559,11 @@ def _draw_energy(panel, state):
 
 def _draw_velocity(panel, state):
     disp = panel.get("velocity")
-    disp.surf.fill(BLACK)
     w, h = disp.size
-    mid = w // 2
-    pygame.draw.line(disp.surf, FRAME, (mid, 10), (mid, h - 10), 1)
-    text_line(disp.surf, "HYP", (mid - 40, 6), MAGENTA, 11, align="center")
-    text_line(disp.surf, "SPC", (mid + 40, 6), GREEN, 11, align="center")
+    mid = w - 34
+    pygame.draw.line(disp.surf, FRAME, (mid - 16, 10), (mid - 16, h - 10), 1)
+    text_line(disp.surf, "H", (mid - 34, 124), MAGENTA, 10, align="center")
+    text_line(disp.surf, "S", (mid + 20, 124), GREEN, 10, align="center")
     track_top, track_bot = 26, h - 26
     track_h = track_bot - track_top
     for x_off, vel, col in [(-22, state.hyper_velocity, MAGENTA),
@@ -570,25 +620,26 @@ def _draw_combat(state):
         if 0 < gy < grid.rect.height:
             pygame.draw.line(grid.surf, WHITE, (cx - 8, gy), (cx + 8, gy), 1)
 
-    grid_btn = next((b for b in panel.elements
-                     if isinstance(b, Button) and b.label == "Grid"), None)
-    if grid_btn and grid_btn.active:
-        overlay = pygame.Surface(grid.size, pygame.SRCALPHA)
-        for gx in range(15, grid.rect.width, 25):
-            for gy in range(15, grid.rect.height, 25):
-                pygame.draw.circle(overlay, (90, 110, 230, 90), (gx, gy), 2)
-        pygame.draw.circle(overlay, (90, 110, 230, 120), (cx, cy), 165, 2)
-        pygame.draw.circle(overlay, (255, 140, 80, 120), (cx, cy), 105, 2)
-        grid.surf.blit(overlay, (0, 0))
-
-    head_btn = next((b for b in panel.elements
-                     if isinstance(b, Button) and b.label == "Head"), None)
-    if head_btn and head_btn.active:
-        for deg in range(0, 360, 30):
+    overlay = pygame.Surface(grid.size, pygame.SRCALPHA)
+    for gx in range(18, grid.rect.width, 22):
+        for gy in range(18, grid.rect.height, 22):
+            dot = (95, 120, 235, 100) if abs(gx - cx) + abs(gy - cy) > 130 else (210, 120, 55, 120)
+            pygame.draw.circle(overlay, dot, (gx, gy), 2)
+    pygame.draw.circle(overlay, (90, 110, 230, 150), (cx, cy), 165, 2)
+    pygame.draw.circle(overlay, (255, 140, 80, 150), (cx, cy), 105, 2)
+    grid.surf.blit(overlay, (0, 0))
+    for deg in range(0, 360, 15):
+        if deg % 30 == 0:
             rad = math.radians(deg - 90)
-            tx = cx + int(150 * math.cos(rad))
-            ty = cy + int(150 * math.sin(rad))
+            tx = cx + int(178 * math.cos(rad))
+            ty = cy + int(178 * math.sin(rad))
             text_line(grid.surf, str(deg), (tx, ty), WHITE, 10, align="center")
+    pygame.draw.polygon(grid.surf, GREEN, [(cx - 110, cy + 150), (cx - 98, cy + 142),
+                                           (cx - 102, cy + 158)])
+    pygame.draw.polygon(grid.surf, RED, [(cx - 130, cy - 145), (cx - 116, cy - 138),
+                                         (cx - 126, cy - 132)])
+    pygame.draw.polygon(grid.surf, RED, [(cx + 120, cy - 152), (cx + 132, cy - 145),
+                                         (cx + 122, cy - 137)])
 
     grid.surf.blit(pygame.transform.smoothscale(asset("combcShip.png"), (34, 34)),
                    (cx - 17, cy - 17))
@@ -671,20 +722,41 @@ def _draw_strategic():
         ["KLG-1", "0.0", "READY"], ["DES-1", "1.2", "READY"],
         ["DES-2", "1.8", "READY"], ["DES-3", "2.4", "HOLD"],
     ], 6, 6, [48, 42, 66], 15, 10)
-    table(panel.get("fleet cmd").surf, ["ORDER", "TARGET", "TIME", "STATUS"], [
-        ["SCREEN", "BC FLAG", "00:18", "ACTIVE"], ["DOCK", "SF-1", "00:42", "HOLD"],
-        ["ESCORT", "CONVOY", "01:10", "QUEUED"], ["SURVEY", "REG 6,0", "02:30", "ACTIVE"],
-        ["RECALL", "PROBE 3", "03:05", "QUEUED"],
-    ], 8, 8, [86, 96, 60, 80], 17, 11)
+    fleet = panel.get("fleet cmd")
+    groups = [
+        ("Battle Fleets", ["Hotspur", "Panzer", "Invader", "Rifle", "Sickle"]),
+        ("Supply Fleets", ["Liberation", "Graviton", "Worm Hole", "Cosmic Lance"]),
+        ("Legion Fleets", ["Leviathan", "Sunblock", "Cumbrous", "Paramount"]),
+    ]
+    y = 8
+    for title, names in groups:
+        fit_text(fleet.surf, title, [8, y, 110, 12], MAGENTA, 9, align="left")
+        y += 14
+        for col, name in enumerate(names):
+            x = 8 + col * 138
+            fit_text(fleet.surf, f"{col + 1}", [x, y, 14, 12], CYAN, 9)
+            fit_text(fleet.surf, f"KS-{col + 1}", [x + 18, y, 40, 12], WHITE, 9, align="left")
+            fit_text(fleet.surf, name, [x + 58, y, 72, 12], WHITE, 9, align="left")
+        y += 28
+        pygame.draw.line(fleet.surf, FRAME_DIM, (4, y - 8), (fleet.rect.width - 4, y - 8), 1)
 
 
 def _draw_security():
     panel = P["Security Console"]
-    table(panel.get("internal").surf, ["DECK", "AREA", "STATE", "TEAM"], [
-        ["02", "BRIDGE", "CLEAR", "A"], ["05", "ARMORY", "LOCK", "B"],
-        ["07", "CARGO", "CAUTION", "C"], ["09", "MED BAY", "CLEAR", "D"],
-        ["12", "SHUTTLE", "CLEAR", "E"], ["15", "BRIG", "LOCK", "F"],
-    ], 6, 8, [38, 82, 64, 42], 17, 10)
+    internal = panel.get("internal")
+    internal.surf.fill(BLACK)
+    hull = [(24, 92), (88, 66), (150, 30), (212, 72), (286, 78),
+            (312, 100), (208, 106), (152, 118), (82, 106)]
+    pygame.draw.polygon(internal.surf, (18, 72, 20), hull)
+    pygame.draw.polygon(internal.surf, (210, 130, 54), hull, 2)
+    for y in range(45, 112, 8):
+        left = max(32, 124 - abs(y - 82) * 2)
+        right = min(292, 198 + abs(y - 80))
+        pygame.draw.line(internal.surf, GREEN, (left, y), (right, y), 2)
+    pygame.draw.rect(internal.surf, FRAME, (4, 86, 62, 16))
+    pygame.draw.rect(internal.surf, BLACK, (0, 82, 40, 24))
+    fit_text(internal.surf, "Type: Battlecruiser     Class: Klagar     Crew: 275",
+             [8, 138, 304, 14], CYAN, 9, align="left")
     readout(panel.get("prisoners").surf, [
         ("Held", "02", GREEN), ("Krell", "01", YELLOW), ("Trader", "01", GREEN),
         ("Risk", "LOW", GREEN), ("Guard", "BETA", GREEN),
