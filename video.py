@@ -18,17 +18,57 @@ except Exception:
 
 
 class _Starfield:
-    """Lightweight warp-streak animation used when no video backend exists."""
+    """Lightweight animated display used when no video backend exists."""
 
     def __init__(self, size, label):
         self.size = size
         self.label = label
         w, h = size
-        self.stars = [[random.uniform(0, w), random.uniform(0, h),
-                       random.uniform(0.5, 2.5)] for _ in range(120)]
+        rng = random.Random(74216)
+        self.stars = [[rng.uniform(0, w), rng.uniform(0, h),
+                       rng.uniform(0.5, 2.5)] for _ in range(120)]
+        self.map_surface = self._make_world_map()
+
+    def _make_world_map(self):
+        w, h = self.size
+        surf = pygame.Surface(self.size).convert()
+        surf.fill((36, 82, 112))
+        rng = random.Random(1470940)
+        land = pygame.Surface(self.size, pygame.SRCALPHA)
+        continents = [
+            [(72, 74), (126, 40), (176, 68), (156, 132), (96, 146), (48, 108)],
+            [(220, 48), (332, 42), (390, 92), (354, 152), (262, 148), (196, 96)],
+            [(405, 112), (510, 98), (596, 142), (562, 230), (442, 246), (388, 182)],
+            [(186, 184), (250, 172), (286, 236), (244, 296), (182, 264)],
+            [(520, 236), (610, 226), (630, 292), (540, 304)],
+        ]
+        sx = w / 645
+        sy = h / 320
+        for poly in continents:
+            pts = [(int(x * sx), int(y * sy)) for x, y in poly]
+            pygame.draw.polygon(land, (54, 132, 42, 235), pts)
+            pygame.draw.polygon(land, (108, 118, 72, 150), pts, 2)
+        for _ in range(44):
+            x = rng.randrange(0, max(1, w - 30))
+            y = rng.randrange(0, max(1, h - 20))
+            ww = rng.randrange(16, 56)
+            hh = rng.randrange(8, 28)
+            col = (66 + rng.randrange(35), 124 + rng.randrange(55), 40 + rng.randrange(30), 115)
+            pygame.draw.ellipse(land, col, (x, y, ww, hh))
+        surf.blit(land, (0, 0))
+        shade = pygame.Surface(self.size, pygame.SRCALPHA)
+        for y in range(h):
+            alpha = int(42 * abs(y - h / 2) / (h / 2))
+            pygame.draw.line(shade, (0, 0, 0, alpha), (0, y), (w, y))
+        surf.blit(shade, (0, 0))
+        return surf
 
     def update_draw(self, surface):
         w, h = self.size
+        if self.label == "EARTH ORBIT":
+            surface.blit(self.map_surface, (0, 0))
+            core.text_line(surface, self.label, (8, 6), CYAN, 12)
+            return
         surface.fill((4, 6, 16))
         for star in self.stars:
             star[0] -= star[2] * 2.2
@@ -55,6 +95,7 @@ class VideoDisplay:
         self.players = []
         self.fallback = _Starfield(size, "DEEP SPACE")
         self.index = 0
+        self.use_fallback_frame = False
         self.z = 1
         panel.add(self)
 
@@ -81,7 +122,7 @@ class VideoDisplay:
         self.fallback.label = labels[self.index % len(labels)]
 
     def draw(self):
-        if not (self.players and self.index < len(self.players)):
+        if self.use_fallback_frame or not (self.players and self.index < len(self.players)):
             self.fallback.update_draw(self.surf)
         pygame.draw.rect(self.surf, FRAME, self.rect, 1)
         self.panel.surf.blit(self.surf, self.pos)
@@ -90,6 +131,8 @@ class VideoDisplay:
         if self.players and self.index < len(self.players):
             self.players[self.index].draw(self.surf)
             self.players[self.index].update(events)
+            avg = pygame.transform.average_color(self.surf)
+            self.use_fallback_frame = sum(avg[:3]) < 18
 
     def close(self):
         for player in self.players:
