@@ -79,13 +79,12 @@ def build():
     P.clear()
     layout = [
         (10, 30, 440, 330, "Navigation Console", 168),
-        (455, 30, 192, 225, "Science Console", 130),
+        (455, 30, 197, 170, "Navigation", 0),
         (656, 50, 655, 385, "Primary Display", 130),
         (1330, 30, 440, 60, "Status Indicators", 140),
-        (451, 265, 197, 170, "Navigation", 0),
         (10, 361, 440, 225, "Star Map", 0),
         (1330, 110, 580, 260, "Computer Display", 140),
-        (490, 455, 160, 135, "Data", 60),
+        (455, 205, 197, 230, "Data", 60),
         (660, 455, 655, 550, "Combat Console", 130),
         (1330, 390, 580, 350, "Strategic Command Console", 200),
         (10, 605, 640, 240, "Engineering Console", 160),
@@ -115,7 +114,7 @@ def build():
 
 def _build_primary():
     panel = P["Primary Display"]
-    video = VideoDisplay(panel, "primary", (645, 320), (5, 5))
+    video = VideoDisplay(panel, "primary", (panel.width - 10, 320), (5, 5))
     video.set_videos(["DeepSpace.mp4", "EarthOrbit.mp4"])
     video.fallback.label = "EARTH ORBIT"
     if len(video.sources) > 1:
@@ -124,18 +123,19 @@ def _build_primary():
     panel.lbl_elapsed = pygame.Rect(95, 344, 84, 18)
     Text(panel, (190, 350), "Time Left", "cyan", 11)
     panel.lbl_left = pygame.Rect(255, 344, 84, 18)
-    Button(panel, (360, 333, 64, 18), "REST", text_size=11)
-    Button(panel, (360, 356, 64, 18), "Sim Freeze", text_size=11)
-    Button(panel, (430, 356, 105, 18), "Help F1/Ctrl+H", text_size=10)
+    right_x = panel.width - 295
+    Button(panel, (right_x, 333, 64, 18), "REST", text_size=11)
+    Button(panel, (right_x, 356, 64, 18), "Sim Freeze", text_size=11)
+    Button(panel, (right_x + 70, 356, 105, 18), "Help F1/Ctrl+H", text_size=10)
 
 
 def _build_science():
-    panel = P["Science Console"]
-    CircleDisplay(panel, "scope", (5, 24), 90)
-    Text(panel, (4, 6), "LRS", "cyan", 12)
-    Button(panel, (150, 4, 36, 16), "SRS", text_size=11)
-    Button(panel, (4, 205, 78, 16), "Dept Q", text_size=11)
-    Button(panel, (110, 205, 78, 16), "Planet Data", text_size=11)
+    panel = P["Combat Console"]
+    CircleDisplay(panel, "scope", (493, 383), 36)
+    Text(panel, (493, 369), "LRS", "cyan", 11)
+    Button(panel, (610, 352, 34, 16), "SRS", text_size=10)
+    Button(panel, (493, 466, 64, 16), "Dept Q", text_size=10)
+    Button(panel, (562, 466, 82, 16), "Planet Data", text_size=10)
 
 
 def _build_navigation():
@@ -205,7 +205,7 @@ def _build_computer():
 
 def _build_data():
     panel = P["Data"]
-    Display(panel, "stores", (150, 120), (5, 10))
+    Display(panel, "stores", (192, 205), (2, 22), double_border=False)
 
 
 def _build_engineering():
@@ -274,9 +274,8 @@ def _build_strategic():
 def _build_security():
     panel = P["Security Console"]
     Display(panel, "internal", (320, 160), (5, 18))
-    Display(panel, "prisoners", (130, 100), (5, 205))
-    Display(panel, "interrogations", (165, 100), (160, 205))
-    Text(panel, (5, 190), "Prisoner Status", "cyan", 12)
+    Display(panel, "interrogations", (320, 100), (5, 205))
+    Text(panel, (5, 190), "Interrogations", "cyan", 12)
 
 
 def _build_log():
@@ -311,13 +310,13 @@ def _draw_primary(state):
     pygame.draw.rect(panel.surf, BLACK, panel.lbl_left)
     pygame.draw.rect(panel.surf, FRAME_DIM, panel.lbl_left, 1)
     fit_text(panel.surf, "5.26 Days", panel.lbl_left, GREEN, 13)
-    status = pygame.Rect(540, 333, 100, 40)
+    status = pygame.Rect(panel.width - 115, 333, 100, 40)
     pygame.draw.rect(panel.surf, GREEN, status)
     fit_text(panel.surf, "Status: Green", status, BLACK, 13)
 
 
 def _draw_science():
-    scope = P["Science Console"].get("scope")
+    scope = P["Combat Console"].get("scope")
     cx, cy = scope.rect.center
     pygame.draw.line(scope.surf, WHITE, (cx, 0), (cx, scope.rect.height), 1)
     pygame.draw.line(scope.surf, WHITE, (0, cy), (scope.rect.width, cy), 1)
@@ -461,12 +460,13 @@ def _draw_data():
              ("Supplies", "1000t"), ("Probes", "L:5 S:5"), ("Pods", "2"),
              ("Escorts", "4")]
     for i, (label, value) in enumerate(items):
-        y = 14 + i * 15
-        box = pygame.Rect(96, y, 50, 13)
-        fit_text(disp.surf, label, [8, y, 84, 13], CYAN, 10, align="left")
+        y = 13 + i * 26
+        box = pygame.Rect(disp.rect.width - 82, y, 66, 16)
+        fit_text(disp.surf, label, [10, y, box.x - 18, 16], CYAN, 11, align="left")
         pygame.draw.rect(disp.surf, BLACK, box)
         pygame.draw.rect(disp.surf, FRAME_DIM, box, 1)
-        fit_text(disp.surf, value, box, GREEN, 10)
+        fit_text(disp.surf, value, box, GREEN, 11)
+    pygame.draw.rect(disp.surf, FRAME_DIM, (6, 6, disp.rect.width - 12, disp.rect.height - 12), 1)
 
 
 def _draw_engineering(state):
@@ -646,6 +646,25 @@ def _draw_combat(state):
 
     _draw_weapons(panel, state)
     _draw_shields(panel, state)
+    _draw_combat_science(panel)
+
+
+def _draw_combat_science(panel):
+    box = pygame.Rect(485, 350, 165, 136)
+    pygame.draw.rect(panel.surf, PANEL_BG, box)
+    pygame.draw.rect(panel.surf, GREY, box, 2)
+    fit_text(panel.surf, "Science Console", [box.x + 6, box.y + 2, 106, 14],
+             CYAN, 10, align="left")
+    fit_text(panel.surf, "Prisoners", [box.x + 83, box.y + 20, 72, 12],
+             CYAN, 9, align="left")
+    rows = [
+        ("Held", "02", GREEN), ("Krell", "01", YELLOW), ("Trader", "01", GREEN),
+        ("Risk", "LOW", GREEN), ("Guard", "BETA", GREEN),
+    ]
+    for i, (label, value, fg) in enumerate(rows):
+        y = box.y + 34 + i * 12
+        fit_text(panel.surf, label, [box.x + 83, y, 38, 11], CYAN, 8, align="left")
+        fit_text(panel.surf, value, [box.x + 122, y, 34, 11], fg, 8, align="left")
 
 
 def _draw_weapons(panel, state):
@@ -757,15 +776,11 @@ def _draw_security():
     pygame.draw.rect(internal.surf, BLACK, (0, 82, 40, 24))
     fit_text(internal.surf, "Type: Battlecruiser     Class: Klagar     Crew: 275",
              [8, 138, 304, 14], CYAN, 9, align="left")
-    readout(panel.get("prisoners").surf, [
-        ("Held", "02", GREEN), ("Krell", "01", YELLOW), ("Trader", "01", GREEN),
-        ("Risk", "LOW", GREEN), ("Guard", "BETA", GREEN),
-    ], 6, 8, 17, 11, 60)
     text_rows(panel.get("interrogations").surf, [
         ("QUEUE", "cyan"), ("KR-17 00:12 hold", "yellow"),
         ("MN-04 00:35 witness", "green"), ("LOG SEALED", "cyan"),
         ("NEXT: sec chief", "green"),
-    ], 6, 8, 17, 10)
+    ], 8, 8, 17, 10)
 
 
 def _draw_log():

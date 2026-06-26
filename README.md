@@ -1,7 +1,7 @@
 # Star Fleet II Deluxe Cockpit UI
 
 A pygame command screen modeled on the Krellan battlecruiser interface from
-Star Fleet II Deluxe. Fourteen console panels show navigation, science, combat,
+Star Fleet II Deluxe. Thirteen console panels show navigation, combat,
 engineering, strategic, security, and communication readouts. Every on-screen
 button responds to both mouse clicks and a keyboard shortcut.
 
@@ -28,18 +28,17 @@ resolution.
 Panels:
 
 - Navigation Console: orbital display, system map, nav view selector
-- Science Console: long and short range scope
 - Primary Display: main viewscreen
 - Status Indicators: ten alert lamps and target distance
 - Navigation: current course and target readout
 - Star Map: mercator, nav, and war map selector
 - Computer Display: mission query and ship status
 - Data: ship stores and complement
-- Combat Console: weapons, shields, and fire grid
+- Combat Console: weapons, shields, science scope, prisoner status, and fire grid
 - Strategic Command Console: fleet orders and order queue
 - Engineering Console: probe control, damage, energy
 - Communication Console: message feed
-- Security Console: deck status and prisoner roster
+- Security Console: deck status and interrogation queue
 - Commanders Log: standing orders
 
 ## Controls
