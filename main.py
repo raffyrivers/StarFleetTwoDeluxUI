@@ -52,7 +52,7 @@ class Cockpit:
         self.fullscreen = True
         self.help_visible = False
         self.snapshot_pending = False
-        self.display = pygame.display.set_mode((0, 0), FULLSCREEN | HWSURFACE | DOUBLEBUF)
+        self.display = pygame.display.set_mode((0, 0), pygame.RESIZABLE | HWSURFACE | DOUBLEBUF)
         self.canvas = pygame.Surface(CANVAS_SIZE).convert()
 
         self.state = ShipState()
@@ -64,7 +64,6 @@ class Cockpit:
         self.key_buttons = {b.key: b for b in BUTTONS if b.key is not None}
 
         self.primary = cockpit.P["Primary Display"].get("primary")
-        self.nav_video = cockpit.P["Navigation Console"].get("nav video")
 
     # --- input ----------------------------------------------------------
 
@@ -180,11 +179,10 @@ class Cockpit:
             panel.draw_base()
         cockpit.draw(self.state, now)
         self.primary.update(video_events)
-        self.nav_video.update(video_events)
         for panel in self.panels:
             panel.finish(self.canvas)
-        StatusBar.sequence_flash(self.top_bars)
         StatusBar.draw_bars(self.canvas, self.top_bars, self.menu_bars, self.notepad)
+        StatusBar.sequence_flash(self.top_bars)
         if self.help_visible:
             help_screen.draw(self.canvas)
         if self.snapshot_pending:
@@ -230,8 +228,6 @@ class Cockpit:
             self.render(events)
             self.clock.tick(FPS)
         self.primary.close()
-        self.nav_video.close()
-        pygame.quit()
 
 
 if __name__ == "__main__":
