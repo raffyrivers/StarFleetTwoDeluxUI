@@ -152,7 +152,7 @@ class Cockpit:
             st.space_velocity = min(10, st.space_velocity + 1)
             st.energy_usage = min(100, st.energy_usage + 3)
         elif key == pygame.K_v:
-            if st.energy_usage == 20 or st.space_velocity == 0:
+            if st.energy_usage == 20 or st.space_velocity == :
                 return
             st.space_velocity = max(0, st.space_velocity - 1)
             st.energy_usage = max(0, st.energy_usage - 3)
