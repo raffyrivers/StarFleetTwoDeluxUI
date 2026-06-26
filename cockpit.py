@@ -58,18 +58,23 @@ def readout(surface, rows, x=6, y=6, line_h=15, size=11, label_w=82):
         y += line_h
 
 
-def table(surface, headers, rows, x, y, widths, line_h=14, size=10):
+def table(surface, headers, rows, x, y, widths, line_h=14, size=10, column_lines=False):
+    surf_rect = surface.get_rect()
     cx = x
     for i, head in enumerate(headers):
-        fit_text(surface, head, [cx, y, widths[i] - 2, line_h], CYAN, size, align="left")
+        fit_text(surface, head, [cx, y, widths[i] - 2, line_h], CYAN, size, align="center")
         cx += widths[i]
-    pygame.draw.line(surface, FRAME, (x, y + line_h), (x + sum(widths), y + line_h), 1)
+        if column_lines:
+            pygame.draw.line(surface, GREY, (cx, 0), (cx, surf_rect.h))
+    pygame.draw.line(surface, FRAME, (0, y + line_h), (surf_rect.w + sum(widths), y + line_h), 1)
     for r, row in enumerate(rows):
         cx = x
         ry = y + line_h + 3 + r * line_h
+       
         for i, cell in enumerate(row):
             fg = YELLOW if cell in WARN_WORDS else GREEN
             fit_text(surface, cell, [cx, ry, widths[i] - 2, line_h], fg, size, align="left")
+            
             cx += widths[i]
 
 
@@ -78,28 +83,27 @@ def table(surface, headers, rows, x, y, widths, line_h=14, size=10):
 def build():
     P.clear()
     layout = [
-        (10, 30, 440, 330, "Navigation Console", 168),
-        (455, 30, 192, 225, "Science Console", 130),
-        (656, 50, 655, 385, "Primary Display", 130),
-        (1330, 30, 440, 60, "Status Indicators", 140),
-        (451, 265, 197, 170, "Navigation", 0),
-        (10, 361, 440, 225, "Star Map", 0),
-        (1330, 110, 580, 260, "Computer Display", 140),
-        (490, 455, 160, 135, "Data", 60),
-        (660, 455, 655, 550, "Combat Console", 130),
-        (1330, 390, 580, 350, "Strategic Command Console", 200),
-        (10, 605, 640, 240, "Engineering Console", 160),
-        (10, 865, 640, 205, "Communication Console", 180),
-        (1330, 760, 330, 310, "Security Console", 130),
-        (1670, 760, 240, 310, "Commanders Log", 150),
+        (10, 30, 440, 330, "Navigation Console", 168, True),
+        (455, 30, 192, 225, "Science Console", 130, True),
+        (656, 50, 655, 385, "Primary Display", 130, True),
+        (1330, 30, 440, 60, "Status Indicators", 140, True),
+        (451, 265, 197, 170, "Navigation", 0, True),
+        (10, 361, 440, 225, "Star Map", 0, False),
+        (1330, 110, 580, 260, "Computer Display", 140, True),
+        (451, 451, 160, 135, "Data", 60, True),
+        (660, 455, 655, 550, "Combat Console", 130, True),
+        (1330, 390, 580, 350, "Strategic Command Console", 200, True),
+        (10, 605, 640, 240, "Engineering Console", 160, True),
+        (10, 865, 640, 205, "Communication Console", 180, True),
+        (1330, 760, 330, 310, "Security Console", 130, True),
+        (1670, 760, 240, 310, "Commanders Log", 150, True),
     ]
-    for x, y, w, h, label, tab in layout:
-        P[label] = Panel(x, y, w, h, label, tab)
+    for x, y, w, h, label, tab, has_tab in layout:
+        P[label] = Panel(x, y, w, h, label, tab, has_tab)
 
     _build_primary()
     _build_science()
     _build_navigation()
-    _build_navigation_data()
     _build_star_map()
     _build_status_indicators()
     _build_computer()
@@ -142,18 +146,14 @@ def _build_navigation():
     panel = P["Navigation Console"]
     Display(panel, "orbit", (210, 210), (5, 24))
     Display(panel, "system", (210, 210), (225, 24))
+    Display(panel, "orbital display", (210, 80), (5, 245))
+    Display(panel, "planets display", (210, 80), (225, 245))
     Text(panel, (5, 8), "Orbital Displays", "cyan", 11)
     Text(panel, (228, 8), "System Map", "cyan", 11)
-    nav = VideoDisplay(panel, "nav video", (430, 70), (5, 256))
-    nav.set_videos(["mmn.mp4"])
-    Button(panel, (5, 238, 64, 16), "Objects", key=pygame.K_i, group="nav", text_size=11)
-    Button(panel, (72, 238, 82, 16), "Orbit Zones", key=pygame.K_o, group="nav", text_size=11)
-    Button(panel, (157, 238, 96, 16), "Mercator Map", key=pygame.K_p, group="nav", text_size=11)
-
-
-def _build_navigation_data():
-    panel = P["Navigation"]
-    Display(panel, "nav grid", (192, 145), (2, 22), double_border=False)
+    Text(panel, (305, 233), "Planets", BLACK, 11)
+    Button(panel, (7, 233, 67, 13), "Objects", key=pygame.K_i, group="nav", text_size=11)
+    Button(panel, (77, 233, 67, 13), "Orbit Zones", key=pygame.K_o, group="nav", text_size=11)
+    Button(panel, (147, 233, 67, 13), "Mercator Map", key=pygame.K_p, group="nav", text_size=11)
 
 
 def _build_star_map():
@@ -362,17 +362,25 @@ def _draw_navigation():
 
 
 def _draw_navigation_data():
-    grid = P["Navigation"].get("nav grid")
-    grid.surf.fill(BLACK)
-    rows = [
-        ("Reg Loc:", "4, 6", GREEN), ("Orb Pos:", "40 / 0", GREEN),
-        ("Dist Trgt:", "1.4", GREEN), ("Course:", "135", GREEN),
-        ("Target:", "40, 0", GREEN), ("Object:", "Planet", GREEN),
-        ("Mode:", "Hyperspace", CYAN),
-    ]
-    readout(grid.surf, rows, 6, 6, 19, 11, 78)
-    pygame.draw.rect(grid.surf, FRAME_DIM, (6, 6, grid.rect.width - 12, grid.rect.height - 12), 1)
+    panel = P["Navigation Console"] 
+    orbit = panel.get("orbital display")
+    planet = panel.get("planets display")
+    orbit.surf.fill(BLACK)
+    object_columns = ["ID#", "Name", "Rel-Pos", "Status"]
+    planets_columns = ["ID", "Cls", "Inh", "Tch", "LP", "BS", "Status"]
+    obj_rows = []
+    planet_rows = []
+    obj_col_widths = [35, 45, 40, 80]
+    planets_col_widths = [25, 25, 25, 25, 25, 25, 50]
+    
+    active = next((b for b in panel.elements
+                   if isinstance(b, Button) and b.active), None)
+    if active and active.label == "Objects":
+        table(orbit.surf, object_columns, obj_rows, 6, 5, obj_col_widths, column_lines=True)
+    elif active and active.label == "Orbit Zones":
+        table(orbit.surf, object_columns, planet_rows, 6, 5, obj_col_widths, column_lines=True)
 
+    table(planet.surf, planets_columns, planet_rows, 6, 5, planets_col_widths, column_lines=True) 
 
 def _draw_star_map():
     panel = P["Star Map"]
@@ -457,11 +465,11 @@ def _draw_computer():
 def _draw_data():
     disp = P["Data"].get("stores")
     disp.surf.fill(BLACK)
-    items = [("Torps", "24"), ("Crew", "275"), ("Shk Troops", "150"),
-             ("Supplies", "1000t"), ("Probes", "L:5 S:5"), ("Pods", "2"),
+    items = [("Crew", "275"), ("Shk Troops", "150"),
+             ("Supplies", "1000t"), ("Pods", "2"),
              ("Escorts", "4")]
     for i, (label, value) in enumerate(items):
-        y = 14 + i * 15
+        y = 3 + i * 25
         box = pygame.Rect(96, y, 50, 13)
         fit_text(disp.surf, label, [8, y, 84, 13], CYAN, 10, align="left")
         pygame.draw.rect(disp.surf, BLACK, box)
