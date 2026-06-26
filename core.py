@@ -78,7 +78,7 @@ def fit_font(text, max_width, max_height, start_size, bold=True):
     return font(6, bold)
 
 
-def fit_text(surface, text, rect, fg, start_size=12, align="center",
+def fit_text(surface, text, rect, fg, start_size=12, align="left",
              valign="center", bold=True):
     """Render text shrunk to fit rect so it never clips or overflows."""
     rect = pygame.Rect(rect)
