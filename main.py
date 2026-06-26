@@ -137,15 +137,23 @@ class Cockpit:
         elif pygame.K_1 <= key <= pygame.K_8:
             self.top_bars[key - pygame.K_1].alerting ^= True
         elif key == pygame.K_z:
+            if st.energy_usage == 100 or st.hyper_velocity == 10:
+                return
             st.hyper_velocity = min(10, st.hyper_velocity + 1)
             st.energy_usage = min(100, st.energy_usage + 5)
         elif key == pygame.K_x:
+            if st.energy_usage == 20 or st.hyper_velocity == 0:
+                return
             st.hyper_velocity = max(0, st.hyper_velocity - 1)
             st.energy_usage = max(0, st.energy_usage - 5)
         elif key == pygame.K_c:
+            if st.energy_usage == 100 or st.space_velocity == 10:
+                return
             st.space_velocity = min(10, st.space_velocity + 1)
             st.energy_usage = min(100, st.energy_usage + 3)
         elif key == pygame.K_v:
+            if st.energy_usage == 20 or st.space_velocity == 0:
+                return
             st.space_velocity = max(0, st.space_velocity - 1)
             st.energy_usage = max(0, st.energy_usage - 3)
         elif key in (pygame.K_F2, pygame.K_F3, pygame.K_F4, pygame.K_F5):
