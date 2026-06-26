@@ -270,9 +270,46 @@ def _build_strategic():
     Button(panel, (455, 128, 58, 17), "Editor", text_size=12)
     Button(panel, (517, 128, 58, 17), "View", text_size=12)
 
+# change as needed
+mariners = 1
+shock_troops = 150
+prisoners = 0
+
+def _toggle_security_board(panel):
+    if panel.security_mode == "boarding":
+        _draw_boarding_panel(panel)
+    else:
+        _draw_security_panel(panel)
+
+def _draw_security_panel(panel):
+    internal = panel.get("internal")
+    interrogations = panel.get("interrogations")
+    internal.surf.fill(BLACK)
+    interrogations.surf.fill(BLACK)
+
+    fit_text(internal.surf, f"Shock Troops: {shock_troops}", [6, 26, 200, 16], GREEN, 12)
+    fit_text(internal.surf, f"Prisoners: {prisoners}", [6, 46, 200, 16], GREEN, 12)
+
+def _draw_boarding_panel(panel):
+    internal = panel.get("internal")
+    interrogations = panel.get("interrogations")
+    internal.surf.fill(BLACK)
+    interrogations.surf.fill(BLACK)
+
+    # fit_text(internal.surf, "BOARDING OPERATIONS", [6,6,200,16] CYAN, 12)
+    fit_text(internal.surf, f"Shock Troops: {shock_troops}", [6,26,200,16], GREEN, 12)
+    fit_text(internal.surf, f"UGA Mariners: {mariners}", [6,46,200,16], RED, 12)
+
 
 def _build_security():
     panel = P["Security Console"]
+    panel.security_mode = "security"
+
+    # boarding button
+    Button(panel, (5,22,90,18), "Boarding", text_size=12,
+   on_toggle=lambda b: setattr(panel, "security_mode",
+   "boarding" if b.active else "security"))
+
     Display(panel, "internal", (320, 160), (5, 18))
     Display(panel, "interrogations", (320, 100), (5, 205))
     Text(panel, (5, 190), "Interrogations", "cyan", 12)
@@ -298,9 +335,8 @@ def draw(state, current_time):
     _draw_communication(state, current_time)
     _draw_combat(state)
     _draw_strategic()
-    _draw_security()
+    _toggle_security_board(P["Security Console"])
     _draw_log()
-
 
 def _draw_primary(state):
     panel = P["Primary Display"]
@@ -781,6 +817,11 @@ def _draw_security():
         ("MN-04 00:35 witness", "green"), ("LOG SEALED", "cyan"),
         ("NEXT: sec chief", "green"),
     ], 8, 8, 17, 10)
+
+def _draw_boarding():
+    panel = P["Boarding"]
+    internal = panel.get("internal")
+    internal.surf.fill(BLACK)
 
 
 def _draw_log():
