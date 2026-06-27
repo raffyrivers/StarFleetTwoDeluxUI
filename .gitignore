@@ -4,6 +4,7 @@ __pycache__
 .DS_Store
 .gitignore.swp
 .gitignore
+.idea/
 venv
 Python-3.12.13/
 snapshots/
