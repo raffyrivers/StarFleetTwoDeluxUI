@@ -90,7 +90,7 @@ def build():
         (451, 265, 197, 170, "Navigation", 0, True),
         (10, 361, 440, 225, "Star Map", 0, False),
         (1330, 110, 580, 260, "Computer Display", 140, True),
-        (451, 451, 160, 135, "Data", 60, True),
+        (451, 451, 197, 135, "Data", 60, True),
         (660, 455, 655, 550, "Combat Console", 130, True),
         (1330, 390, 580, 350, "Strategic Command Console", 200, True),
         (10, 605, 640, 240, "Engineering Console", 160, True),
@@ -206,7 +206,7 @@ def _build_computer():
 
 def _build_data():
     panel = P["Data"]
-    Display(panel, "stores", (192, 205), (2, 0), double_border=False)
+    Display(panel, "stores", (192, 112), (2, 20), double_border=False)
 
 
 def _build_engineering():
@@ -505,12 +505,12 @@ def _draw_data():
              ("Supplies", "1000t"), ("Pods", "2"),
              ("Escorts", "4")]
     for i, (label, value) in enumerate(items):
-        y = 10 + i * 25
-        box = pygame.Rect(96, y, 50, 13)
-        fit_text(disp.surf, label, [8, y, 84, 13], CYAN, 10, align="left")
+        y = 10 + i * 19
+        box = pygame.Rect(disp.rect.width - 78, y, 64, 14)
+        fit_text(disp.surf, label, [8, y, box.x - 16, 14], CYAN, 10, align="left")
         pygame.draw.rect(disp.surf, BLACK, box)
         pygame.draw.rect(disp.surf, FRAME_DIM, box, 1)
-        fit_text(disp.surf, value, box, GREEN, 11)
+        fit_text(disp.surf, value, box, GREEN, 10)
     pygame.draw.rect(disp.surf, FRAME_DIM, (6, 6, disp.rect.width - 12, disp.rect.height - 12), 1)
 
 
@@ -554,6 +554,7 @@ def _draw_damage(panel, state):
     disp = panel.get("velocity")  # rightmost display hosts the dynamic ship
     disp.surf.fill(BLACK)
     base_x = 6
+    velocity_rail = pygame.Rect(disp.rect.width - 32, 18, 28, disp.rect.height - 36)
     img = pygame.transform.smoothscale(asset("shipdmg.png"), (130, 95))
     disp.surf.blit(img, (base_x + 4, 30))
     hull_shape = [(44, 78), (78, 54), (138, 44), (196, 62), (222, 80),
@@ -576,7 +577,7 @@ def _draw_damage(panel, state):
         pygame.draw.rect(disp.surf, FRAME_DIM, rect, 1)
         fit_text(disp.surf, name, rect, text_fg, 9, align="left")
     for i, name in enumerate(systems_right):
-        rect = pygame.Rect(base_x + 154, top + i * 13, 62, 12)
+        rect = pygame.Rect(base_x + 154, top + i * 13, velocity_rail.x - base_x - 158, 12)
         pygame.draw.rect(disp.surf, fg, rect)
         pygame.draw.rect(disp.surf, FRAME_DIM, rect, 1)
         fit_text(disp.surf, name, rect, text_fg, 9, align="left")
@@ -605,22 +606,22 @@ def _draw_energy(panel, state):
 def _draw_velocity(panel, state):
     disp = panel.get("velocity")
     w, h = disp.size
-    mid = w - 34
-    pygame.draw.line(disp.surf, FRAME, (mid - 16, 10), (mid - 16, h - 10), 1)
-    text_line(disp.surf, "H", (mid - 34, 124), MAGENTA, 10, align="center")
-    text_line(disp.surf, "S", (mid + 20, 124), GREEN, 10, align="center")
+    rail = pygame.Rect(w - 32, 18, 28, h - 36)
+    pygame.draw.rect(disp.surf, BLACK, rail)
+    pygame.draw.line(disp.surf, FRAME, (rail.x, rail.y), (rail.x, rail.bottom), 1)
+    text_line(disp.surf, "H", (rail.x + 8, 124), MAGENTA, 9, align="center")
+    text_line(disp.surf, "S", (rail.x + 21, 124), GREEN, 9, align="center")
     track_top, track_bot = 26, h - 26
     track_h = track_bot - track_top
-    for x_off, vel, col in [(-22, state.hyper_velocity, MAGENTA),
-                            (22, state.space_velocity, GREEN)]:
-        bx = mid + x_off
+    for bx, vel, col in [(rail.x + 8, state.hyper_velocity, MAGENTA),
+                         (rail.x + 21, state.space_velocity, GREEN)]:
         pygame.draw.line(disp.surf, FRAME_DIM, (bx, track_top), (bx, track_bot), 1)
         for step in range(11):
             ty = track_bot - int(track_h * step / 10)
-            pygame.draw.line(disp.surf, FRAME_DIM, (bx - 5, ty), (bx + 5, ty), 1)
+            pygame.draw.line(disp.surf, FRAME_DIM, (bx - 3, ty), (bx + 3, ty), 1)
         fill_h = int(track_h * vel / 10)
-        pygame.draw.rect(disp.surf, col, (bx - 4, track_bot - fill_h, 8, fill_h))
-        text_line(disp.surf, str(vel), (bx, track_bot + 12), col, 11, align="center")
+        pygame.draw.rect(disp.surf, col, (bx - 3, track_bot - fill_h, 6, fill_h))
+        text_line(disp.surf, str(vel), (bx, track_bot + 12), col, 9, align="center")
 
 
 def _draw_communication(state, current_time):
