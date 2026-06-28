@@ -104,6 +104,7 @@ def build():
     _build_primary()
     _build_science()
     _build_navigation()
+    _build_navigation_data()
     _build_star_map()
     _build_status_indicators()
     _build_computer()
@@ -152,9 +153,18 @@ def _build_navigation():
     Text(panel, (5, 8), "Orbital Displays", "cyan", 11)
     Text(panel, (228, 8), "System Map", "cyan", 11)
     Text(panel, (305, 233), "Planets", BLACK, 11)
-    Button(panel, (7, 233, 67, 13), "Objects", key=pygame.K_i, group="nav", text_size=11)
+    Button(panel, (7, 233, 67, 13), "Objects", key=pygame.K_i, group="nav",
+           active=True, text_size=11)
     Button(panel, (77, 233, 67, 13), "Orbit Zones", key=pygame.K_o, group="nav", text_size=11)
     Button(panel, (147, 233, 67, 13), "Mercator Map", key=pygame.K_p, group="nav", text_size=11)
+
+
+def _build_navigation_data():
+    panel = P["Navigation"]
+    Display(panel, "nav readout", (192, 145), (2, 22), double_border=False)
+    Button(panel, (122, 62, 66, 18), "Evasive", key=pygame.K_e, text_size=12)
+    Button(panel, (126, 94, 28, 22), "<<", text_size=16)
+    Button(panel, (160, 94, 28, 22), ">>", text_size=16)
 
 
 def _build_star_map():
@@ -271,35 +281,40 @@ def _build_strategic():
     Button(panel, (455, 128, 58, 17), "Editor", text_size=12)
     Button(panel, (517, 128, 58, 17), "View", text_size=12)
 
-# change as needed
-mariners = 1
-shock_troops = 150
-prisoners = 0
-
-def _toggle_security_board(panel):
+def _toggle_security_board(panel, state):
     if panel.security_mode == "boarding":
-        _draw_boarding_panel(panel)
+        _draw_boarding_panel(panel, state)
     else:
-        _draw_security_panel(panel)
+        _draw_security_panel(panel, state)
 
-def _draw_security_panel(panel):
+def _draw_security_panel(panel, state):
     internal = panel.get("internal")
     interrogations = panel.get("interrogations")
     internal.surf.fill(BLACK)
     interrogations.surf.fill(BLACK)
 
-    fit_text(internal.surf, f"Shock Troops: {shock_troops}", [6, 26, 200, 16], GREEN, 12)
-    fit_text(internal.surf, f"Prisoners: {prisoners}", [6, 46, 200, 16], GREEN, 12)
+    fit_text(internal.surf, f"Shock Troops: {state.shock_troops}", [6, 26, 200, 16], GREEN, 12)
+    fit_text(internal.surf, f"Prisoners: {state.prisoners}", [6, 46, 200, 16], GREEN, 12)
+    fit_text(internal.surf, f"Target: {state.selected_target['name'][:18]}",
+             [6, 66, 260, 16], CYAN, 12, align="left")
+    fit_text(interrogations.surf, "QUEUE", [8, 8, 80, 14], CYAN, 10, align="left")
+    fit_text(interrogations.surf, "No active interviews" if state.prisoners == 0 else "KR-17 00:12 hold",
+             [8, 27, 190, 14], YELLOW if state.prisoners else GREEN, 10, align="left")
 
-def _draw_boarding_panel(panel):
+def _draw_boarding_panel(panel, state):
     internal = panel.get("internal")
     interrogations = panel.get("interrogations")
     internal.surf.fill(BLACK)
     interrogations.surf.fill(BLACK)
 
-    # fit_text(internal.surf, "BOARDING OPERATIONS", [6,6,200,16] CYAN, 12)
-    fit_text(internal.surf, f"Shock Troops: {shock_troops}", [6,26,200,16], GREEN, 12)
-    fit_text(internal.surf, f"UGA Mariners: {mariners}", [6,46,200,16], RED, 12)
+    fit_text(internal.surf, "BOARDING OPERATIONS", [6, 6, 220, 16], CYAN, 12, align="left")
+    fit_text(internal.surf, f"Shock Troops: {state.shock_troops}", [6, 30, 200, 16], GREEN, 12)
+    fit_text(internal.surf, f"UGA Marines: {state.marines}", [6, 50, 200, 16], RED, 12)
+    shield_note = "Shields up" if state.selected_target.get("shields_up") else "Shields down"
+    fit_text(internal.surf, f"Target: {state.selected_target['name'][:18]}",
+             [6, 74, 250, 16], CYAN, 12, align="left")
+    fit_text(internal.surf, shield_note, [6, 94, 160, 16],
+             RED if state.selected_target.get("shields_up") else GREEN, 12, align="left")
 
 
 def _build_security():
@@ -325,51 +340,60 @@ def _build_log():
 
 def draw(state, current_time):
     _draw_primary(state)
-    _draw_science()
-    _draw_navigation()
-    _draw_navigation_data()
-    _draw_star_map()
-    _draw_status_indicators()
+    _draw_science(state)
+    _draw_navigation(state)
+    _draw_navigation_console_data(state)
+    _draw_navigation_data(state)
+    _draw_star_map(state)
+    _draw_status_indicators(state)
     _draw_computer()
-    _draw_data()
+    _draw_data(state)
     _draw_engineering(state)
     _draw_communication(state, current_time)
     _draw_combat(state)
     _draw_strategic()
-    _toggle_security_board(P["Security Console"])
-    _draw_log()
+    _toggle_security_board(P["Security Console"], state)
+    _draw_log(state)
 
 def _draw_primary(state):
     panel = P["Primary Display"]
     pygame.draw.rect(panel.surf, BLACK, panel.lbl_elapsed)
     pygame.draw.rect(panel.surf, FRAME_DIM, panel.lbl_elapsed, 1)
-    fit_text(panel.surf, "15.24 Days", panel.lbl_elapsed, GREEN, 13)
+    fit_text(panel.surf, f"{state.mission_elapsed_days:.2f} Days", panel.lbl_elapsed, GREEN, 13)
     pygame.draw.rect(panel.surf, BLACK, panel.lbl_left)
     pygame.draw.rect(panel.surf, FRAME_DIM, panel.lbl_left, 1)
-    fit_text(panel.surf, "5.26 Days", panel.lbl_left, GREEN, 13)
+    fit_text(panel.surf, f"{state.time_left_days:.2f} Days", panel.lbl_left, GREEN, 13)
     status = pygame.Rect(panel.width - 115, 333, 100, 40)
-    pygame.draw.rect(panel.surf, GREEN, status)
-    fit_text(panel.surf, "Status: Green", status, BLACK, 13)
+    status_col = {"Green": GREEN, "Yellow": YELLOW, "Red": RED}.get(state.alert_status, GREEN)
+    pygame.draw.rect(panel.surf, status_col, status)
+    fit_text(panel.surf, f"Status: {state.alert_status}", status, BLACK, 13)
 
 
-def _draw_science():
+def _draw_science(state):
     scope = P["Combat Console"].get("scope")
+    scope.surf.fill(BLACK)
     cx, cy = scope.rect.center
     pygame.draw.line(scope.surf, WHITE, (cx, 0), (cx, scope.rect.height), 1)
     pygame.draw.line(scope.surf, WHITE, (0, cy), (scope.rect.width, cy), 1)
     for i in range(0, scope.rect.width, 15):
         pygame.draw.line(scope.surf, FRAME_DIM, (cx - 8, i), (cx + 8, i), 1)
         pygame.draw.line(scope.surf, FRAME_DIM, (i, cy - 8), (i, cy + 8), 1)
-    pygame.draw.circle(scope.surf, GREEN, (cx + 28, cy - 34), 3)
-    pygame.draw.circle(scope.surf, RED, (cx - 40, cy + 22), 3)
+    for contact in state.scanner_contacts():
+        dx = int((contact["x"] - state.system_x) * 5)
+        dy = int((contact["y"] - state.system_y) * 5)
+        px = max(3, min(scope.rect.width - 3, cx + dx))
+        py = max(3, min(scope.rect.height - 3, cy + dy))
+        dot = RED if contact.get("threat") else GREEN
+        pygame.draw.circle(scope.surf, dot, (px, py), 3)
     pygame.draw.circle(scope.surf, YELLOW, scope.rect.center, 4)
 
 
-def _draw_navigation():
+def _draw_navigation(state):
     panel = P["Navigation Console"]
     orbit = panel.get("orbit")
     system = panel.get("system")
     for disp in (orbit, system):
+        disp.surf.fill(BLACK)
         grid = pygame.Surface(disp.size, pygame.SRCALPHA)
         for gx in range(0, disp.rect.width, 21):
             pygame.draw.line(grid, (255, 255, 255, 40), (gx, 0), (gx, disp.rect.height))
@@ -388,37 +412,98 @@ def _draw_navigation():
     pygame.draw.circle(system.surf, RED, (cx, cy), 90, 1)
     pygame.draw.circle(system.surf, (60, 120, 220), (cx, cy), 55, 1)
     pygame.draw.circle(system.surf, YELLOW, (cx, cy), 8)
-    pygame.draw.circle(system.surf, (255, 150, 60), (cx + 70, cy - 30), 5)
-    pygame.draw.circle(system.surf, CYAN, (cx - 38, cy + 36), 4)
-    text_line(system.surf, "Gurth", (cx - 45, cy - 34), (90, 100, 255), 9)
-    text_line(system.surf, "Truth", (cx + 58, cy - 48), RED, 9)
+    for contact in state.tactical_contacts():
+        sx = int(cx + (contact["x"] - state.system_x) * 5)
+        sy = int(cy + (contact["y"] - state.system_y) * 5)
+        if 3 <= sx <= system.rect.width - 3 and 3 <= sy <= system.rect.height - 3:
+            dot = RED if contact.get("threat") else ((255, 150, 60) if contact["kind"] == "planet" else CYAN)
+            pygame.draw.circle(system.surf, dot, (sx, sy),
+                               5 if contact["id"] == state.selected_target["id"] else 4)
+            text_line(system.surf, contact["name"][:8], (sx - 20, sy - 16), dot, 8)
+    ship_x = max(4, min(system.rect.width - 4, int(cx + (state.system_x - 40) * 2)))
+    ship_y = max(4, min(system.rect.height - 4, int(cy + (state.system_y - 23) * 2)))
+    pygame.draw.circle(system.surf, GREEN, (ship_x, ship_y), 4)
     for label, dx, dy in [("N", cx, 10), ("S", cx, disp.rect.height - 10),
                           ("E", disp.rect.width - 12, cy), ("W", 12, cy)]:
         text_line(orbit.surf, label, (dx, dy), CYAN, 10, align="center")
 
 
-def _draw_navigation_data():
+def _draw_navigation_console_data(state):
     panel = P["Navigation Console"] 
     orbit = panel.get("orbital display")
     planet = panel.get("planets display")
     orbit.surf.fill(BLACK)
     object_columns = ["ID#", "Name", "Rel-Pos", "Status"]
+    zone_columns = ["ID#", "Zone", "Rel-Pos", "Status"]
     planets_columns = ["ID", "Cls", "Inh", "Tch", "LP", "BS", "Status"]
     obj_rows = []
+    zone_rows = []
     planet_rows = []
     obj_col_widths = [35, 45, 40, 80]
     planets_col_widths = [25, 25, 25, 25, 25, 25, 50]
     
+    contacts = state.scanner_contacts()
+    for contact in contacts[:4]:
+        rel = f"{round(contact['x'] - state.system_x)},{round(contact['y'] - state.system_y)}"
+        status = "THREAT" if contact.get("threat") else "CLEAR"
+        obj_rows.append([contact["id"], contact["name"][:8], rel, status])
+        zone = "Mine" if contact["kind"] == "mine" else ("Orbit" if contact["kind"] == "planet" else "Track")
+        zone_rows.append([contact["id"], zone, rel, status])
+        if contact["kind"] == "planet":
+            planet_rows.append([contact["id"][:2], "M", "Y", "4", "1", "0", "Survey"])
+
     active = next((b for b in panel.elements
                    if isinstance(b, Button) and b.active), None)
     if active and active.label == "Objects":
         table(orbit.surf, object_columns, obj_rows, 6, 5, obj_col_widths, column_lines=True)
     elif active and active.label == "Orbit Zones":
-        table(orbit.surf, object_columns, planet_rows, 6, 5, obj_col_widths, column_lines=True)
+        table(orbit.surf, zone_columns, zone_rows, 6, 5, obj_col_widths, column_lines=True)
 
     table(planet.surf, planets_columns, planet_rows, 6, 5, planets_col_widths, column_lines=True) 
 
-def _draw_star_map():
+
+def _draw_navigation_data(state):
+    disp = P["Navigation"].get("nav readout")
+    disp.surf.fill((34, 34, 34))
+    pygame.draw.rect(disp.surf, FRAME, disp.rect, 2)
+
+    def field(rect, value, size=13, align="right"):
+        rect = pygame.Rect(rect)
+        pygame.draw.rect(disp.surf, BLACK, rect)
+        pygame.draw.rect(disp.surf, WHITE, rect, 2)
+        fit_text(disp.surf, value, rect.inflate(-4, -2), GREEN, size, align=align)
+
+    fit_text(disp.surf, "X", [65, 4, 24, 14], CYAN, 11, align="center")
+    fit_text(disp.surf, "Y", [94, 4, 24, 14], CYAN, 11, align="center")
+
+    fit_text(disp.surf, "Reg. Loc:", [6, 20, 60, 15], CYAN, 10, align="left")
+    field([62, 17, 28, 18], state.nav_region[0], 13)
+    field([94, 17, 28, 18], state.nav_region[1], 13)
+    fit_text(disp.surf, "Dist:", [128, 20, 28, 15], CYAN, 9, align="left")
+    field([160, 17, 28, 18], f"{state.nav_distance:.1f}", 10)
+
+    fit_text(disp.surf, "Orb Pos:", [6, 41, 60, 15], CYAN, 10, align="left")
+    field([62, 38, 28, 18], state.nav_orbit[0], 13)
+    field([94, 38, 28, 18], state.nav_orbit[1], 13)
+
+    fit_text(disp.surf, "Course:", [6, 64, 58, 15], CYAN, 10, align="left")
+    field([70, 61, 50, 18], state.nav_course, 13)
+    fit_text(disp.surf, "Sideslip", [128, 58, 60, 12], CYAN, 8, align="center")
+
+    fit_text(disp.surf, "Target 1:", [6, 86, 65, 15], CYAN, 10, align="left")
+    field([70, 83, 50, 18], f"{state.nav_target[0]}, {state.nav_target[1]}", 11)
+    fit_text(disp.surf, str(state.nav_sideslip), [144, 118, 28, 12], GREEN, 8, align="center")
+
+    fit_text(disp.surf, "Object:", [6, 108, 52, 15], CYAN, 10, align="left")
+    field([58, 105, 130, 18], state.nav_object, 11, align="center")
+
+    fit_text(disp.surf, "Mode:", [6, 129, 52, 14], CYAN, 10, align="left")
+    mode_rect = pygame.Rect(58, 125, 130, 18)
+    pygame.draw.rect(disp.surf, BLACK, mode_rect)
+    pygame.draw.rect(disp.surf, GREEN, mode_rect, 2)
+    fit_text(disp.surf, state.nav_mode, mode_rect.inflate(-4, -2), GREEN, 12, align="center")
+
+def _draw_star_map(state):
     panel = P["Star Map"]
     disp = panel.get("map")
     active = next((b for b in panel.elements
@@ -446,14 +531,20 @@ def _draw_star_map():
         pygame.draw.rect(disp.surf, (26, 26, 26), (0, 0, disp.rect.width, 14))
         for i, label in enumerate(("0", "5", "10", "15", "20", "25", "30", "35")):
             fit_text(disp.surf, label, [8 + i * 53, 0, 26, 13], CYAN, 9)
-        pygame.draw.rect(disp.surf, MAGENTA, (205, 80, 12, 12), 2)
+        ship_x = max(6, min(disp.rect.width - 8, int(state.region_x / 35 * disp.rect.width)))
+        ship_y = max(18, min(disp.rect.height - 8, int(state.region_y / 20 * disp.rect.height)))
+        pygame.draw.rect(disp.surf, MAGENTA, (ship_x - 6, ship_y - 6, 12, 12), 2)
 
 
-def _draw_status_indicators():
+def _draw_status_indicators(state):
     panel = P["Status Indicators"]
+    goods = state.status_indicator_goods()
+    for element in panel.elements:
+        if isinstance(element, _Indicator):
+            element.good = goods.pop(0) if goods else True
     pygame.draw.rect(panel.surf, BLACK, panel.lbl_distance)
     pygame.draw.rect(panel.surf, FRAME_DIM, panel.lbl_distance, 1)
-    fit_text(panel.surf, "4.8 Ly", panel.lbl_distance, GREEN, 12)
+    fit_text(panel.surf, f"{state.nav_distance:.1f} Ly", panel.lbl_distance, GREEN, 12)
 
 
 def _draw_computer():
@@ -498,14 +589,16 @@ def _draw_computer():
              [8, 230, screen.rect.width - 16, 14], CYAN, 9, align="left")
 
 
-def _draw_data():
+def _draw_data(state):
     disp = P["Data"].get("stores")
     disp.surf.fill(BLACK)
-    items = [("Crew", "275"), ("Shk Troops", "150"),
-             ("Supplies", "1000t"), ("Pods", "2"),
-             ("Escorts", "4")]
+    items = [("Torps", str(state.torpedoes)), ("Crew", str(state.crew)),
+             ("Shk Troops", str(state.shock_troops)),
+             ("Supplies", f"{state.supplies}t"),
+             ("Probes", f"L:{state.probe_loaded} S:{state.probe_storage}"),
+             ("Pods", str(state.pods)), ("Escorts", str(state.escorts))]
     for i, (label, value) in enumerate(items):
-        y = 10 + i * 19
+        y = 8 + i * 15
         box = pygame.Rect(disp.rect.width - 78, y, 64, 14)
         fit_text(disp.surf, label, [8, y, box.x - 16, 14], CYAN, 10, align="left")
         pygame.draw.rect(disp.surf, BLACK, box)
@@ -530,23 +623,37 @@ def _draw_probes(panel, state):
     if active == "Operations":
         headers = ["#", "Mode", "TG", "SS#", "R.LOC", "S.LOC", "Pw%", "Status"]
         widths = [16, 52, 44, 40, 50, 56, 36, 60]
-        rows = [
-            ["1", "Survey", "SS42", "043", "(4,6)", "(49,43)", "92", "Mapping"],
-            ["2", "Relay", "SS35", "030", "(3,8)", "(51,67)", "81", "Linked"],
-            ["3", "Scout", "SS10", "009", "(2,9)", "(52,24)", "64", "Silent"],
-            ["4", "Track", "SS45", "041", "(0,8)", "(21,63)", "77", "Contact"],
-            ["5", "Reserve", "SS36", "007", "(0,4)", "(21,63)", "100", "Docked"],
-        ]
+        rows = []
+        for probe in state.active_probes[:5]:
+            rows.append([
+                str(probe["id"]), probe["mode"], probe["target"], "039",
+                f"({state.nav_region[0]},{state.nav_region[1]})",
+                f"({round(probe['x'])},{round(probe['y'])})",
+                str(round(probe["power"])), probe["status"],
+            ])
+        while len(rows) < 5:
+            n = len(rows) + 1
+            status = "Loaded" if n <= state.probe_loaded else ("Stored" if n <= state.probe_loaded + state.probe_storage else "Empty")
+            rows.append([str(n), "Reserve", "--", "--", "--", "--", "100", status])
     else:
         headers = ["#", "Status", "TG", "RAD", "SS", "REG.L", "SYS.L", "DETECT"]
         widths = [16, 56, 36, 36, 36, 56, 60, 48]
-        rows = [
-            ["1", "Survey", "43", "12", "39", "(6,7)", "(49,43)", "Bio"],
-            ["2", "Relay", "30", "08", "35", "(2,8)", "(51,67)", "Com"],
-            ["3", "Scout", "09", "03", "10", "(2,9)", "(52,24)", "Ore"],
-            ["4", "Track", "41", "16", "45", "(0,8)", "(21,63)", "Ship"],
-            ["5", "Standby", "07", "00", "36", "(0,4)", "(21,63)", "None"],
-        ]
+        rows = []
+        contacts = state.scanner_contacts()
+        for i in range(5):
+            if i < len(contacts):
+                contact = contacts[i]
+                rows.append([
+                    str(i + 1), "Detect", contact["id"][-2:], str(round(contact["distance"])),
+                    "39", f"({state.nav_region[0]},{state.nav_region[1]})",
+                    f"({round(contact['x'])},{round(contact['y'])})",
+                    contact["kind"].title(),
+                ])
+            else:
+                status = "Standby" if i < state.probe_loaded else "Empty"
+                rows.append([str(i + 1), status, "--", "00", "39",
+                             f"({state.nav_region[0]},{state.nav_region[1]})",
+                             f"({round(state.system_x)},{round(state.system_y)})", "None"])
     table(disp.surf, headers, rows, 6, 6, widths, 14, 10)
 
 
@@ -591,8 +698,9 @@ def _draw_energy(panel, state):
     disp = panel.get("energy")
     disp.surf.fill(BLACK)
     rows = [("Usage", state.energy_usage, state.energy_color),
-            ("Quantity", 94, "green"), ("Backup", 100, "green"),
-            ("Shields", 58, "yellow")]
+            ("Quantity", state.energy_pct, "green" if state.energy_pct >= 45 else "yellow"),
+            ("Backup", state.backup_energy_pct, "green"),
+            ("Shields", state.shield_pct, "yellow" if state.shields_up else "red")]
     for i, (label, pct, fg) in enumerate(rows):
         y = 10 + i * 20
         fit_text(disp.surf, label, [4, y, 60, 16], CYAN, 11, align="left")
@@ -633,11 +741,16 @@ def _draw_communication(state, current_time):
     mode = next((b.label for b in panel.elements
                  if isinstance(b, Button) and b.active and b.group == "comm"), "Messages")
     if mode == "Reports":
-        source = [(a, b) for a, b in REPORTS]
+        source = [(a, b) for a, b in state.report_rows()]
     elif mode == "Combined":
-        source = [(MESSAGES[i][0], REPORTS[i][1]) for i in range(len(MESSAGES))]
+        reports = state.report_rows()
+        messages = state.messages
+        source = [(messages[i % len(messages)][0], reports[i % len(reports)][1])
+                  for i in range(max(len(messages), len(reports)))]
     else:
-        source = [(a, b) for a, b in MESSAGES]
+        source = [(a, b) for a, b in state.messages]
+    if not source:
+        source = [("Comms", "no traffic")]
 
     if current_time > state.feed_clock + 900:
         state.feed_index = (state.feed_index % len(source)) + 1
@@ -680,22 +793,30 @@ def _draw_combat(state):
             tx = cx + int(178 * math.cos(rad))
             ty = cy + int(178 * math.sin(rad))
             text_line(grid.surf, str(deg), (tx, ty), WHITE, 10, align="center")
-    pygame.draw.polygon(grid.surf, GREEN, [(cx - 110, cy + 150), (cx - 98, cy + 142),
-                                           (cx - 102, cy + 158)])
-    pygame.draw.polygon(grid.surf, RED, [(cx - 130, cy - 145), (cx - 116, cy - 138),
-                                         (cx - 126, cy - 132)])
-    pygame.draw.polygon(grid.surf, RED, [(cx + 120, cy - 152), (cx + 132, cy - 145),
-                                         (cx + 122, cy - 137)])
+    for contact in state.tactical_contacts():
+        dx = int((contact["x"] - state.system_x) * 15)
+        dy = int((contact["y"] - state.system_y) * 15)
+        px = max(18, min(grid.rect.width - 18, cx + dx))
+        py = max(18, min(grid.rect.height - 18, cy + dy))
+        selected = contact["id"] == state.selected_target["id"]
+        col = RED if contact.get("threat") else (GREEN if contact["kind"] == "base" else CYAN)
+        shape = [(px, py - 9), (px + 9, py + 7), (px - 9, py + 7)]
+        if contact["kind"] == "mine":
+            pygame.draw.circle(grid.surf, RED, (px, py), 6, 2)
+        else:
+            pygame.draw.polygon(grid.surf, col, shape)
+        if selected:
+            pygame.draw.rect(grid.surf, MAGENTA, (px - 12, py - 12, 24, 24), 1)
 
     grid.surf.blit(pygame.transform.smoothscale(asset("combcShip.png"), (34, 34)),
                    (cx - 17, cy - 17))
 
     _draw_weapons(panel, state)
     _draw_shields(panel, state)
-    _draw_combat_science(panel)
+    _draw_combat_science(panel, state)
 
 
-def _draw_combat_science(panel):
+def _draw_combat_science(panel, state):
     box = pygame.Rect(485, 350, 165, 136)
     pygame.draw.rect(panel.surf, PANEL_BG, box)
     pygame.draw.rect(panel.surf, GREY, box, 2)
@@ -703,9 +824,13 @@ def _draw_combat_science(panel):
              CYAN, 10, align="left")
     fit_text(panel.surf, "Prisoners", [box.x + 83, box.y + 20, 72, 12],
              CYAN, 9, align="left")
+    threat_count = sum(1 for c in state.scanner_contacts() if c.get("threat"))
     rows = [
-        ("Held", "02", GREEN), ("Krell", "01", YELLOW), ("Trader", "01", GREEN),
-        ("Risk", "LOW", GREEN), ("Guard", "BETA", GREEN),
+        ("Held", str(state.prisoners).zfill(2), GREEN),
+        ("Krell", str(max(0, state.prisoners - 1)).zfill(2), YELLOW),
+        ("Trader", "01" if state.prisoners else "00", GREEN),
+        ("Risk", "HIGH" if threat_count else "LOW", RED if threat_count else GREEN),
+        ("Guard", "ALFA" if state.alert_status == "Red" else "BETA", GREEN),
     ]
     for i, (label, value, fg) in enumerate(rows):
         y = box.y + 34 + i * 12
@@ -721,10 +846,15 @@ def _draw_weapons(panel, state):
     for i, name in enumerate(state.weapons):
         cell = pygame.Rect(box.x + 6 + i * 39, box.y + 20, 37, 16)
         active = i == state.weapon_index
-        pygame.draw.rect(panel.surf, GREEN if active else (30, 30, 30), cell)
+        ready = state.weapon_reload[i] <= 0
+        face = GREEN if active and ready else (YELLOW if active else (30, 30, 30))
+        if not ready and not active:
+            face = RED
+        pygame.draw.rect(panel.surf, face, cell)
         pygame.draw.rect(panel.surf, BLACK, cell, 1)
         fit_text(panel.surf, name, cell, BLACK if active else WHITE, 10)
-    labels = [("Mode", "Auto / Manual"), ("Set", "Destroy / Disable")]
+    labels = [("Mode", "Auto" if state.weapon_auto else "Manual"),
+              ("Set", "Destroy" if state.weapon_destroy else "Disable")]
     for i, (tag, val) in enumerate(labels):
         y = box.y + 44 + i * 22
         tag_box = pygame.Rect(box.x + 6, y, 44, 16)
@@ -732,7 +862,9 @@ def _draw_weapons(panel, state):
         fit_text(panel.surf, tag, tag_box, BLACK, 10)
         fit_text(panel.surf, val, [box.x + 56, y, 104, 16], GREY, 10, align="left")
     info = pygame.Rect(box.x + 6, box.y + 92, 153, 30)
-    fit_text(panel.surf, "Bmb: N   Qty: 24   ECM: Y", info, GREEN, 10, align="left")
+    ready_text = "READY" if state.weapon_reload[state.weapon_index] <= 0 else f"{state.weapon_reload[state.weapon_index]:.1f}s"
+    fit_text(panel.surf, f"Qty: {state.torpedoes}  ECM: {'Y' if state.ecm_enabled else 'N'}  {ready_text}",
+             info, GREEN if ready_text == "READY" else YELLOW, 10, align="left")
 
 
 def _draw_shields(panel, state):
@@ -741,9 +873,11 @@ def _draw_shields(panel, state):
     pygame.draw.rect(panel.surf, GREY, box, 2)
     fit_text(panel.surf, "Shields", [box.x + 4, box.y + 2, 80, 14], CYAN, 11, align="left")
     center = (box.centerx, box.y + 70)
-    quad = [(225, 315, GREEN, "1:500"), (315, 45, RED, "4:0"),
-            (45, 135, GREEN, "3:1000"), (135, 225, GREEN, "2:2000")]
-    for start, end, col, label in quad:
+    arcs = [(225, 315), (135, 225), (45, 135), (315, 45)]
+    for idx, (start, end) in enumerate(arcs):
+        strength = state.shield_strength[idx] if state.shields_up else 0
+        col = GREEN if strength >= 500 else (YELLOW if strength > 0 else RED)
+        label = f"{idx + 1}:{strength}"
         _arc_quadrant(panel.surf, center, 38, 56, start, end, col)
         mid = math.radians((start + (end if end > start else end + 360)) / 2)
         lx = center[0] + int(47 * math.cos(mid))
@@ -752,6 +886,10 @@ def _draw_shields(panel, state):
     panel.surf.blit(pygame.transform.smoothscale(asset("babaaa 2.png"), (28, 40)),
                     (center[0] - 14, center[1] - 20))
     text_line(panel.surf, "Shield Mode", (box.x + 6, box.y + 118), CYAN, 10)
+    fit_text(panel.surf, state.shield_policy, [box.x + 70, box.y + 111, 80, 14],
+             GREEN if state.shields_up else RED, 10, align="left")
+    fit_text(panel.surf, f"AAS: {'Y' if state.aas_enabled else 'N'}",
+             [box.x + 6, box.y + 132, 70, 13], CYAN, 9, align="left")
 
 
 def _arc_quadrant(surface, center, r_in, r_out, start, end, col):
@@ -806,42 +944,17 @@ def _draw_strategic():
         pygame.draw.line(fleet.surf, FRAME_DIM, (4, y - 8), (fleet.rect.width - 4, y - 8), 1)
 
 
-def _draw_security():
-    panel = P["Security Console"]
-    internal = panel.get("internal")
-    internal.surf.fill(BLACK)
-    hull = [(24, 92), (88, 66), (150, 30), (212, 72), (286, 78),
-            (312, 100), (208, 106), (152, 118), (82, 106)]
-    pygame.draw.polygon(internal.surf, (18, 72, 20), hull)
-    pygame.draw.polygon(internal.surf, (210, 130, 54), hull, 2)
-    for y in range(45, 112, 8):
-        left = max(32, 124 - abs(y - 82) * 2)
-        right = min(292, 198 + abs(y - 80))
-        pygame.draw.line(internal.surf, GREEN, (left, y), (right, y), 2)
-    pygame.draw.rect(internal.surf, FRAME, (4, 86, 62, 16))
-    pygame.draw.rect(internal.surf, BLACK, (0, 82, 40, 24))
-    fit_text(internal.surf, "Type: Battlecruiser     Class: Klagar     Crew: 275",
-             [8, 138, 304, 14], CYAN, 9, align="left")
-    text_rows(panel.get("interrogations").surf, [
-        ("QUEUE", "cyan"), ("KR-17 00:12 hold", "yellow"),
-        ("MN-04 00:35 witness", "green"), ("LOG SEALED", "cyan"),
-        ("NEXT: sec chief", "green"),
-    ], 8, 8, 17, 10)
-
-def _draw_boarding():
-    panel = P["Boarding"]
-    internal = panel.get("internal")
-    internal.surf.fill(BLACK)
-
-
-def _draw_log():
+def _draw_log(state):
     disp = P["Commanders Log"].get("log")
     text_rows(disp.surf, [
         ("IMPERIAL TRIBUNE", "cyan"), ("STARDATE 7421.6", "green"),
-        ("Klagar-class", "green"), ("battlecruiser docked", "green"),
-        ("at Starfort SF-1.", "green"), ("Stores: 24 torpedoes,", "green"),
-        ("4000 power units,", "green"), ("1000 tons supplies.", "green"),
-        ("150 shock troops ready.", "yellow"), ("", "green"),
+        ("Klagar-class", "green"),
+        (f"battlecruiser {state.nav_mode.lower()}", "green"),
+        (f"near {state.selected_target['name'][:18]}.", "green"),
+        (f"Stores: {state.torpedoes} torpedoes,", "green"),
+        (f"{round(state.energy_units)} power units,", "green"),
+        (f"{state.supplies} tons supplies.", "green"),
+        (f"{state.shock_troops} shock troops ready.", "yellow"), ("", "green"),
         ("Standing order:", "cyan"), ("complete training", "cyan"),
         ("patrol and report.", "cyan"),
     ], 8, 8, 18, 11)

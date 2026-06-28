@@ -54,6 +54,7 @@ class Cockpit:
         self.snapshot_pending = False
         self.display = pygame.display.set_mode((0, 0), pygame.RESIZABLE | HWSURFACE | DOUBLEBUF)
         self.canvas = pygame.Surface(CANVAS_SIZE).convert()
+        self.last_tick = pygame.time.get_ticks()
 
         self.state = ShipState()
         widgets.reset_buttons()
@@ -100,6 +101,7 @@ class Cockpit:
 
     def side_effects(self, button):
         if button.label == "Send Message":
+            self.state.add_message("Comms", "message queued for fleet relay")
             button.active = False
         if button.label == "SNAP":
             button.active = False
@@ -107,8 +109,28 @@ class Cockpit:
         if button.label == "Help F1/Ctrl+H":
             button.active = False
             self.help_visible = True
+        if button.panel is cockpit.P["Navigation"]:
+            if button.label == "Evasive":
+                self.state.set_nav_evasive(button.active)
+            elif button.label == "<<":
+                self.state.adjust_nav_sideslip(-1)
+                button.active = False
+            elif button.label == ">>":
+                self.state.adjust_nav_sideslip(1)
+                button.active = False
         if button.panel is cockpit.P["Primary Display"] and button.label == "REST":
-            pass
+            self.state.toggle_rest(button.active)
+        if button.panel is cockpit.P["Primary Display"] and button.label == "Sim Freeze":
+            self.state.toggle_sim_freeze(button.active)
+        if button.panel is cockpit.P["Engineering Console"] and button.label == "Launch":
+            self.state.launch_probe()
+            button.active = False
+        if button.panel is cockpit.P["Combat Console"]:
+            if button.label in ("Auto", "Manual", "Battle Entry", "Maximum"):
+                self.state.set_shield_mode(button.label)
+            elif button.label == "Board":
+                self.state.attempt_boarding()
+                button.active = False
 
     def key(self, event):
         ctrl_down = bool(getattr(event, "mod", 0) & KMOD_CTRL)
@@ -132,36 +154,28 @@ class Cockpit:
         key = event.key
         ctrl_down = bool(getattr(event, "mod", 0) & KMOD_CTRL)
         if ctrl_down and pygame.K_1 <= key <= pygame.K_4:
-            st.damage_level = key - pygame.K_1 + 1
+            st.set_damage_level(key - pygame.K_1 + 1)
         elif pygame.K_1 <= key <= pygame.K_8:
             self.top_bars[key - pygame.K_1].alerting ^= True
         elif key == pygame.K_z:
-            if st.energy_usage == 100 or st.hyper_velocity == 10:
-                return
-            st.hyper_velocity = min(10, st.hyper_velocity + 1)
-            st.energy_usage = min(100, st.energy_usage + 5)
+            st.change_hyper_velocity(1)
         elif key == pygame.K_x:
-            if st.energy_usage == 20 or st.hyper_velocity == 0:
-                return
-            st.hyper_velocity = max(0, st.hyper_velocity - 1)
-            st.energy_usage = max(0, st.energy_usage - 5)
+            st.change_hyper_velocity(-1)
         elif key == pygame.K_c:
-            if st.energy_usage == 100 or st.space_velocity == 10:
-                return
-            st.space_velocity = min(10, st.space_velocity + 1)
-            st.energy_usage = min(100, st.energy_usage + 3)
+            st.change_space_velocity(1)
         elif key == pygame.K_v:
-            if st.energy_usage == 20 or st.space_velocity == 0:
-                return
-            st.space_velocity = max(0, st.space_velocity - 1)
-            st.energy_usage = max(0, st.energy_usage - 3)
+            st.change_space_velocity(-1)
         elif key in (pygame.K_F2, pygame.K_F3, pygame.K_F4, pygame.K_F5):
-            st.damage_level = {pygame.K_F2: 1, pygame.K_F3: 2,
-                               pygame.K_F4: 3, pygame.K_F5: 4}[key]
+            st.set_damage_level({pygame.K_F2: 1, pygame.K_F3: 2,
+                                 pygame.K_F4: 3, pygame.K_F5: 4}[key])
         elif key == pygame.K_RIGHT:
-            st.weapon_index = (st.weapon_index + 1) % len(st.weapons)
+            st.cycle_weapon(1)
         elif key == pygame.K_LEFT:
-            st.weapon_index = (st.weapon_index - 1) % len(st.weapons)
+            st.cycle_weapon(-1)
+        elif key in (pygame.K_RETURN, pygame.K_SPACE):
+            st.fire_selected_weapon()
+        elif key == pygame.K_t:
+            st.target_next_contact()
         elif key == pygame.K_n:
             self.primary.cycle()
 
@@ -176,6 +190,9 @@ class Cockpit:
 
     def render(self, events):
         now = pygame.time.get_ticks()
+        dt = (now - self.last_tick) / 1000.0
+        self.last_tick = now
+        self.state.tick(dt)
         # pyvidplayer2 assigns F1 to mute. It must not receive the cockpit's
         # help shortcut, including the second press that closes the overlay.
         video_events = [event for event in events
@@ -189,8 +206,10 @@ class Cockpit:
         self.primary.update(video_events)
         for panel in self.panels:
             panel.finish(self.canvas)
-        StatusBar.draw_bars(self.canvas, self.top_bars, self.menu_bars, self.notepad)
+        for bar in self.top_bars:
+            bar.alerting = self.state.status_flags.get(bar.label, False)
         StatusBar.sequence_flash(self.top_bars)
+        StatusBar.draw_bars(self.canvas, self.top_bars, self.menu_bars, self.notepad)
         if self.help_visible:
             help_screen.draw(self.canvas)
         if self.snapshot_pending:
