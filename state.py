@@ -442,20 +442,53 @@ class ShipState:
     def attempt_boarding(self):
         target = self.selected_target
         if target.kind not in ("ship", "base"):
+            target.boarding_status = "No boarding target"
             self.add_message("Security", "boarding target invalid")
             return False
         if target.shields_up:
+            target.boarding_status = "Blocked by shields"
             self.add_message("Security", "boarding blocked: target shields up")
             return False
         if self.crew_manifest.shock_troops < 10:
+            target.boarding_status = "Troops unavailable"
             self.add_message("Security", "boarding blocked: troops unavailable")
             return False
         self.crew_manifest.shock_troops -= 10
         captured = max(1, target.prisoners)
         self.crew_manifest.prisoners += captured
         target.prisoners = 0
+        target.defenders = max(0, target.defenders - 18)
+        target.boarding_status = "Secured" if target.defenders == 0 else "Boarding action underway"
         self.add_message("Security", f"boarding complete: {captured} prisoners held")
         return True
+
+    def boarding_context(self):
+        target = self.selected_target
+        valid = target.kind in ("ship", "base")
+        if not valid:
+            status = "NO BOARDING TARGET"
+        elif target.shields_up:
+            status = "BLOCKED: TARGET SHIELDS UP"
+        elif self.crew_manifest.shock_troops < 10:
+            status = "BLOCKED: TROOPS UNAVAILABLE"
+        else:
+            status = target.boarding_status
+            if status == "Not engaged":
+                status = "READY TO BOARD"
+        return {
+            "valid": valid,
+            "target": target.name,
+            "target_type": target.kind.title(),
+            "deck_class": target.deck_class if valid else "No deck plan",
+            "shields_up": target.shields_up if valid else False,
+            "shock_troops": self.crew_manifest.shock_troops,
+            "space_marines": self.crew_manifest.marines,
+            "defenders": target.defenders if valid else 0,
+            "prisoners": target.prisoners if valid else 0,
+            "compartments": list(target.compartments) if valid else [],
+            "status": status,
+            "secured": valid and target.boarding_status == "Secured",
+        }
 
     def target_solution(self):
         target = self.selected_target
