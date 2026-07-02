@@ -66,6 +66,9 @@ class Cockpit:
         self.primary = cockpit.P["Primary Display"].get("primary")
         self.nav_video = cockpit.P["Navigation Console"].get("nav video")
 
+        self.damage_panel = cockpit.P["Engineering Console"]
+        self.damage_buttons = cockpit.build_damage_buttons(self.damage_panel)
+
     # --- input ----------------------------------------------------------
 
     def to_canvas(self, pos):

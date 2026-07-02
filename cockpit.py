@@ -5,13 +5,51 @@ readouts are expressed as data and rendered through shared helpers so text
 always fits its box and the code stays compact.
 """
 
+
 import math
+import os
 import pygame
 import core
 from core import (BLACK, PANEL_BG, FRAME, FRAME_DIM, CYAN, GREEN, RED, YELLOW,
                   GREY, MAGENTA, WHITE, color, font, fit_text, text_line, asset)
-from widgets import Panel, Button, Text, Display, CircleDisplay, StatusBar
+from widgets import Panel, Button,Text, Display, CircleDisplay, StatusBar
+from widgets import Button, cycle_damage
 from video import VideoDisplay
+
+if not pygame.get_init():
+    pygame.init()
+if not pygame.display.get_init():
+    pygame.display.init()
+
+SHIP_DAMAGE = None
+
+DAMAGE_SUBSYSTEMS = [
+
+    # label      button x,y       label x,y
+    ("NAV CTR",   5,  12,   48, 16),
+    ("S/L ENG",   5,  38,   48, 42),
+    ("HYP ENG",   5,  64,   48, 68),
+    ("WARP SYS",  5,  90,   48, 94),
+    ("L.R.S.",    5, 116,   48,120),
+    ("SHD CTL",   5, 142,   48,146),
+
+    ("TRACTOR", 185, 12, 145, 16),
+    ("HYP CTL", 185, 38, 145, 42),
+    ("TELEPORT",185, 64, 145, 68),
+    ("COMM CTL",185, 90, 145, 94),
+    ("TRAC BEAM",185,116,140,120),
+    ("PLS",      185,142,170,146),
+]
+
+
+def get_ship_damage():
+    global SHIP_DAMAGE
+    if SHIP_DAMAGE is None:
+        SHIP_DAMAGE = pygame.image.load(
+            os.path.join(core.BASE_DIR, "assets", "shipdmg.png")
+        ).convert_alpha()
+    return SHIP_DAMAGE
+
 
 P = {}            # panels keyed by tab/name
 WARN_WORDS = {"CAUTION", "LOW", "HOLD", "QUEUED", "LOCK"}
@@ -204,15 +242,24 @@ def _build_data():
 
 def _build_engineering():
     panel = P["Engineering Console"]
+
+    # Existing displays
     Display(panel, "probes", (380, 98), (5, 25))
     Display(panel, "energy", (380, 90), (5, 145))
     Display(panel, "velocity", (250, 210), (386, 25))
+
+    # Existing labels
     Text(panel, (5, 8), "Probes Control", "cyan", 12)
     Text(panel, (400, 8), "Damage - Ship", "cyan", 12)
     Text(panel, (560, 8), "Velocity", "cyan", 12)
     Text(panel, (5, 128), "Energy", "cyan", 12)
-    Button(panel, (214, 6, 88, 17), "Operations", key=pygame.K_q, group="probe", text_size=12)
-    Button(panel, (306, 6, 78, 17), "Launch", key=pygame.K_w, group="probe", text_size=12)
+
+    # Existing buttons
+    Button(panel, (214, 6, 88, 17), "Operations",
+           key=pygame.K_q, group="probe", text_size=12)
+
+    Button(panel, (306, 6, 78, 17), "Launch",
+           key=pygame.K_w, group="probe", text_size=12)
 
 
 def _build_communication():
@@ -428,9 +475,9 @@ def _draw_data():
 def _draw_engineering(state):
     panel = P["Engineering Console"]
     _draw_probes(panel, state)
-    _draw_damage(panel, state)
     _draw_energy(panel, state)
     _draw_velocity(panel, state)
+    _draw_damage(panel, state)
 
 
 def _draw_probes(panel, state):
@@ -459,35 +506,41 @@ def _draw_probes(panel, state):
             ["5", "Standby", "07", "00", "36", "(0,4)", "(21,63)", "None"],
         ]
     table(disp.surf, headers, rows, 6, 6, widths, 14, 10)
-
+def build_damage_buttons(panel):
+    buttons = []
+    damage_origin = (398, 104)
+    for label, bx, by, _, _ in DAMAGE_SUBSYSTEMS:
+        col = 0 if bx < 100 else 1
+        x = damage_origin[0] + (col * 76)
+        y = damage_origin[1] + (by // 26) * 18
+        width = 67 if col == 0 else 63
+        b = Button(
+            panel,
+            (x, y, width, 16),
+            label,
+            text_size=7,
+            on_toggle=cycle_damage
+        )
+        b.face = GREEN
+        b.text_color = BLACK
+        b.damage_state = 0
+        buttons.append(b)
+    return buttons
 
 def _draw_damage(panel, state):
-    disp = panel.get("velocity")  # rightmost display hosts the dynamic ship
-    # Damage detail is drawn directly on the panel beside the velocity column.
-    base_x = 386
-    img = pygame.transform.smoothscale(asset("shipdmg.png"), (130, 95))
-    panel.surf.blit(img, (base_x + 4, 30))
-    systems_left = ["CMPTR", "S/L ENG", "HYP ENG", "SRS", "LRS", "SHD CTL"]
-    systems_right = ["TRP CTL", "PHS CTL", "TELEPRT", "COM CTL", "TRAC BM", "PLS"]
-    palette = {1: GREEN, 2: YELLOW, 3: RED, 4: (40, 40, 40)}
-    fg = palette[state.damage_level]
-    text_fg = BLACK if state.damage_level in (1,) else "white"
-    top = 138
-    for i, name in enumerate(systems_left):
-        rect = pygame.Rect(base_x + 4, top + i * 13, 70, 12)
-        pygame.draw.rect(panel.surf, fg, rect)
-        pygame.draw.rect(panel.surf, FRAME_DIM, rect, 1)
-        fit_text(panel.surf, name, rect, text_fg, 9, align="left")
-    for i, name in enumerate(systems_right):
-        rect = pygame.Rect(base_x + 160, top + i * 13, 70, 12)
-        pygame.draw.rect(panel.surf, fg, rect)
-        pygame.draw.rect(panel.surf, FRAME_DIM, rect, 1)
-        fit_text(panel.surf, name, rect, text_fg, 9, align="left")
-    hull = pygame.Rect(base_x + 78, top, 78, 77)
-    pygame.draw.rect(panel.surf, fg, hull)
-    pygame.draw.rect(panel.surf, FRAME_DIM, hull, 1)
-    fit_text(panel.surf, "HULL", hull, text_fg, 12)
+    img = get_ship_damage()
+    if img is None:
+        return
 
+    disp = panel.get("velocity")
+    if disp is None:
+        return
+
+    half_w = disp.rect.width // 2
+    img_w = max(120, min(half_w - 10, 180))
+    img_h = int(img_w * img.get_height() / img.get_width())
+    scaled = pygame.transform.smoothscale(img, (img_w, img_h))
+    disp.surf.blit(scaled, (8, 6))
 
 def _draw_energy(panel, state):
     disp = panel.get("energy")
@@ -507,24 +560,25 @@ def _draw_energy(panel, state):
 
 def _draw_velocity(panel, state):
     disp = panel.get("velocity")
-    disp.surf.fill(BLACK)
     w, h = disp.size
-    mid = w // 2
+    left_w = 150
+    pygame.draw.rect(disp.surf, BLACK, (left_w, 0, w - left_w, h))
+    mid = left_w + 30
     pygame.draw.line(disp.surf, FRAME, (mid, 10), (mid, h - 10), 1)
-    text_line(disp.surf, "HYP", (mid - 40, 6), MAGENTA, 11, align="center")
-    text_line(disp.surf, "SPC", (mid + 40, 6), GREEN, 11, align="center")
+    text_line(disp.surf, "HYP", (mid - 28, 6), MAGENTA, 10, align="center")
+    text_line(disp.surf, "SPC", (mid + 28, 6), GREEN, 10, align="center")
     track_top, track_bot = 26, h - 26
     track_h = track_bot - track_top
-    for x_off, vel, col in [(-22, state.hyper_velocity, MAGENTA),
-                            (22, state.space_velocity, GREEN)]:
+    for x_off, vel, col in [(-18, state.hyper_velocity, MAGENTA),
+                            (18, state.space_velocity, GREEN)]:
         bx = mid + x_off
         pygame.draw.line(disp.surf, FRAME_DIM, (bx, track_top), (bx, track_bot), 1)
         for step in range(11):
             ty = track_bot - int(track_h * step / 10)
-            pygame.draw.line(disp.surf, FRAME_DIM, (bx - 5, ty), (bx + 5, ty), 1)
+            pygame.draw.line(disp.surf, FRAME_DIM, (bx - 4, ty), (bx + 4, ty), 1)
         fill_h = int(track_h * vel / 10)
-        pygame.draw.rect(disp.surf, col, (bx - 4, track_bot - fill_h, 8, fill_h))
-        text_line(disp.surf, str(vel), (bx, track_bot + 12), col, 11, align="center")
+        pygame.draw.rect(disp.surf, col, (bx - 3, track_bot - fill_h, 6, fill_h))
+        text_line(disp.surf, str(vel), (bx, track_bot + 12), col, 10, align="center")
 
 
 def _draw_communication(state, current_time):
