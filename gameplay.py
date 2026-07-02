@@ -182,6 +182,10 @@ class Contact:
     course: float = 0.0
     weapon: str = ""
     status: str = "READY"
+    deck_class: str = "Unknown"
+    defenders: int = 0
+    compartments: list = field(default_factory=list)
+    boarding_status: str = "Not engaged"
 
     def __getitem__(self, key):
         return getattr(self, key)
@@ -208,7 +212,9 @@ class Contact:
             "threat": self.threat, "shields_up": self.shields_up,
             "prisoners": self.prisoners, "velocity": self.velocity,
             "course": self.course, "weapon": self.weapon,
-            "status": self.status, "distance": distance,
+            "status": self.status, "deck_class": self.deck_class,
+            "defenders": self.defenders, "compartments": self.compartments,
+            "boarding_status": self.boarding_status, "distance": distance,
         }
 
 
@@ -252,12 +258,17 @@ INITIAL_REPORTS = [
 
 INITIAL_CONTACTS = [
     Contact("SF-1", "Starfort", "base", 42.0, 20.0,
-            threat=False, shields_up=False, prisoners=0, weapon=""),
+            threat=False, shields_up=False, prisoners=0, weapon="",
+            deck_class="Starfort Docking Core", defenders=120,
+            compartments=["Dock", "Control", "Stores", "Barracks", "Power", "Brig"]),
     Contact("TRUTH", "Truth", "planet", 47.0, 17.0,
             threat=False, shields_up=False, prisoners=0, weapon=""),
     Contact("EN-1", "Krell Raider", "ship", 37.0, 27.0,
             threat=True, shields_up=True, prisoners=2,
-            velocity=0.35, course=315.0, weapon="P1"),
+            velocity=0.35, course=315.0, weapon="P1",
+            deck_class="Destroyer Deck Plan", defenders=38,
+            compartments=["Bridge", "Forward Gun", "Port Berth", "Starboard Berth",
+                          "Engineering", "Magazine", "Cargo", "Brig"]),
     Contact("MN-1", "Minefield", "mine", 43.0, 31.0,
             threat=True, shields_up=False, prisoners=0, weapon=""),
 ]

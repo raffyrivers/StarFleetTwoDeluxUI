@@ -57,6 +57,43 @@ class GameplayStateTests(unittest.TestCase):
         self.assertTrue(state.attempt_boarding())
         self.assertGreater(state.prisoners, prisoners)
 
+    def test_boarding_context_for_valid_blocked_and_invalid_targets(self):
+        state = ShipState()
+        enemy = next(i for i, c in enumerate(state.contacts) if c.kind == "ship")
+        state.target_index = enemy
+        state.contacts[enemy].shields_up = True
+        ctx = state.boarding_context()
+        self.assertTrue(ctx["valid"])
+        self.assertTrue(ctx["shields_up"])
+        self.assertIn("SHIELDS", ctx["status"])
+        self.assertGreater(ctx["defenders"], 0)
+        self.assertGreater(len(ctx["compartments"]), 0)
+
+        state.contacts[enemy].shields_up = False
+        ctx = state.boarding_context()
+        self.assertTrue(ctx["valid"])
+        self.assertFalse(ctx["shields_up"])
+        self.assertEqual(ctx["status"], "READY TO BOARD")
+
+        planet = next(i for i, c in enumerate(state.contacts) if c.kind == "planet")
+        state.target_index = planet
+        ctx = state.boarding_context()
+        self.assertFalse(ctx["valid"])
+        self.assertEqual(ctx["status"], "NO BOARDING TARGET")
+
+    def test_successful_boarding_updates_context(self):
+        state = ShipState()
+        enemy = next(i for i, c in enumerate(state.contacts) if c.kind == "ship")
+        state.target_index = enemy
+        state.contacts[enemy].shields_up = False
+        troops = state.shock_troops
+        defenders = state.contacts[enemy].defenders
+        self.assertTrue(state.attempt_boarding())
+        ctx = state.boarding_context()
+        self.assertLess(state.shock_troops, troops)
+        self.assertLess(ctx["defenders"], defenders)
+        self.assertIn(ctx["status"], ("Boarding action underway", "Secured"))
+
 
 if __name__ == "__main__":
     unittest.main()
