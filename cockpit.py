@@ -210,8 +210,21 @@ class _Indicator:
 
 def _build_computer():
     panel = P["Computer Display"]
+    menu = ["Combat Stats", "Information", "Landing Party", "Planets", "Star Systems",
+            "Bases", "Intelligence", "Reference Lib", "Self-Destruct", "Special Services"]
     Display(panel, "options", (90, 250), (5, 5))
     Display(panel, "screen", (475, 250), (100, 5))
+
+    # Button(panel, (5, 22, 90, 18), "Boarding", text_size=12,
+    #        on_toggle=lambda b: setattr(panel, "security_mode",
+    #          "boarding" if b.active else "security"))
+    # rect = pygame.Rect(6, 10 + i * 22, 78, 18)
+
+    # for m in menu:
+    #     Button(panel, (6, 10 + m * 22, 78, 18), menu[m], text_size=12)
+
+
+
 
 
 def _build_data():
@@ -303,8 +316,8 @@ def _draw_security_panel(panel, state):
     internal.surf.fill(BLACK)
     interrogations.surf.fill(BLACK)
 
-    fit_text(internal.surf, f"Shock Troops: {state.shock_troops}", [6, 26, 200, 16], GREEN, 12)
-    fit_text(internal.surf, f"Prisoners: {state.prisoners}", [6, 46, 200, 16], GREEN, 12)
+    fit_text(internal.surf, f"Shock Troops: {state.shock_troops}", [6, 20, 200, 16], GREEN, 12)
+    fit_text(internal.surf, f"Prisoners: {state.prisoners}", [6, 40, 200, 16], GREEN, 12)
     fit_text(internal.surf, f"Target: {state.selected_target['name'][:18]}",
              [6, 66, 260, 16], CYAN, 12, align="left")
     fit_text(interrogations.surf, "QUEUE", [8, 8, 80, 14], CYAN, 10, align="left")
@@ -317,7 +330,42 @@ def _draw_boarding_panel(panel, state):
     internal.surf.fill(BLACK)
     interrogations.surf.fill(BLACK)
     ctx = state.boarding_context()
-    _draw_enemy_deck_plan(internal.surf, ctx)
+
+    img_h = internal.size[1] - 40
+    img_w = internal.size[0]
+    img = pygame.transform.smoothscale(panel.boarding_img, (img_w, img_h))
+    internal.surf.blit(img, (0,0))
+
+    # --- table under the image ---
+    list_y = img_h - 12  # adjust vertical position
+    label_x = 12  # red label position
+    value_x = 90  # green value position
+
+    enemType = "battlecruiser"
+    enemClass = "klagar"
+
+
+    rows = [
+        ("TYPE", enemType.upper()),
+        ("CLASS", enemClass.upper()),
+        ("CREW", f"{ctx['defenders']}   SHK: {ctx['shock_troops']}"),
+    ]
+
+    for i, (label, value) in enumerate(rows):
+        line_y = list_y + i * 18  # spacing between lines
+
+        # red label
+        fit_text(internal.surf,
+                 f"{label}:",
+                 [label_x, line_y, 80, 14],
+                 RED, 11, align="left")
+
+        # green value on same line
+        fit_text(internal.surf,
+                 value,
+                 [value_x, line_y, 200, 14],
+                 GREEN, 11, align="left")
+
     _draw_boarding_notes(interrogations.surf, ctx)
 
 
@@ -398,6 +446,7 @@ def _draw_boarding_notes(surface, ctx):
 def _build_security():
     panel = P["Security Console"]
     panel.security_mode = "security"
+    panel.boarding_img = asset("SFD_Enemy_Ship.png")
 
     # boarding button
     Button(panel, (5,22,90,18), "Boarding", text_size=12,
@@ -669,6 +718,7 @@ def _draw_computer(state):
     options.surf.fill(PANEL_BG)
     menu = ["Combat Stats", "Information", "Landing Party", "Planets", "Star Systems",
             "Bases", "Intelligence", "Reference Lib", "Self-Destruct", "Special Services"]
+
     for i, label in enumerate(menu):
         rect = pygame.Rect(6, 10 + i * 22, 78, 18)
         face = BUTTON_FACE if i != 4 else FRAME
