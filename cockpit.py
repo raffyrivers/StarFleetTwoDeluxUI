@@ -369,68 +369,6 @@ def _draw_boarding_panel(panel, state):
     _draw_boarding_notes(interrogations.surf, ctx)
 
 
-def _draw_enemy_deck_plan(surface, ctx):
-    fit_text(surface, "BOARDING OPERATIONS", [6, 4, 180, 16], CYAN, 12, align="left")
-    status_fg = RED if "BLOCKED" in ctx["status"] or not ctx["valid"] else (
-        GREEN if ctx["secured"] else YELLOW)
-    fit_text(surface, ctx["status"], [164, 4, 148, 16], status_fg, 10, align="right")
-
-    if not ctx["valid"]:
-        pygame.draw.rect(surface, (18, 18, 18), (18, 34, 284, 78))
-        pygame.draw.rect(surface, RED, (18, 34, 284, 78), 2)
-        fit_text(surface, "NO BOARDING TARGET", [24, 58, 272, 22], RED, 14)
-    else:
-        hull = [(28, 92), (70, 50), (136, 32), (232, 50), (292, 92),
-                (236, 134), (136, 148), (68, 132)]
-        pygame.draw.polygon(surface, (18, 46, 42), hull)
-        pygame.draw.polygon(surface, FRAME, hull, 2)
-        pygame.draw.line(surface, CYAN, (70, 50), (236, 134), 1)
-        pygame.draw.line(surface, CYAN, (232, 50), (68, 132), 1)
-        pygame.draw.line(surface, FRAME_DIM, (136, 32), (136, 148), 1)
-        pygame.draw.line(surface, FRAME_DIM, (34, 92), (286, 92), 1)
-
-        compartments = ctx["compartments"] or ["Bridge", "Engineering", "Brig", "Cargo"]
-        rects = [
-            pygame.Rect(116, 42, 40, 24), pygame.Rect(76, 72, 48, 24),
-            pygame.Rect(158, 72, 48, 24), pygame.Rect(72, 104, 52, 22),
-            pygame.Rect(156, 104, 52, 22), pygame.Rect(116, 124, 44, 18),
-            pygame.Rect(210, 86, 38, 22), pygame.Rect(34, 86, 38, 22),
-        ]
-        for i, name in enumerate(compartments[:len(rects)]):
-            rect = rects[i]
-            if ctx["shields_up"]:
-                fill = (55, 20, 20)
-                edge = RED
-            elif ctx["secured"]:
-                fill = (18, 72, 20)
-                edge = GREEN
-            elif i < 2:
-                fill = (72, 58, 18)
-                edge = YELLOW
-            else:
-                fill = (18, 38, 54)
-                edge = CYAN
-            pygame.draw.rect(surface, fill, rect)
-            pygame.draw.rect(surface, edge, rect, 1)
-            fit_text(surface, name[:8], rect.inflate(-2, -2), WHITE, 7)
-        for x, y, col in [(92, 92, GREEN), (104, 98, GREEN), (176, 86, RED), (188, 88, RED)]:
-            pygame.draw.circle(surface, col, (x, y), 3)
-
-    rows = [
-        ("Target", f"{ctx['target']} ({ctx['target_type']})", CYAN),
-        ("Deck", ctx["deck_class"], GREEN if ctx["valid"] else RED),
-        ("Shk Troops", str(ctx["shock_troops"]), GREEN),
-        ("Sp Marines", str(ctx["space_marines"]), GREEN),
-        ("Defenders", str(ctx["defenders"]), RED if ctx["defenders"] else GREEN),
-        ("Shields", "UP" if ctx["shields_up"] else "DOWN", RED if ctx["shields_up"] else GREEN),
-    ]
-    y = 150
-    for label, value, fg in rows:
-        fit_text(surface, label, [8, y, 82, 12], CYAN, 9, align="left")
-        fit_text(surface, value, [94, y, 218, 12], fg, 9, align="left")
-        y += 13
-
-
 def _draw_boarding_notes(surface, ctx):
     fit_text(surface, "BOARDING DATA", [8, 6, 130, 14], CYAN, 11, align="left")
     notes = [
