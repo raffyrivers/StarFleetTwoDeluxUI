@@ -649,8 +649,6 @@ def _draw_computer(state):
     menu = ["Combat Stats", "Information", "Landing Party", "Planets", "Star Systems",
             "Bases", "Intelligence", "Reference Lib", "Self-Destruct", "Special Services"]
 
-
-
     #first for loop draws labels
     # for i, label in enumerate(menu):
     #     rect = pygame.Rect(6, 10 + i * 22, 78, 18)
