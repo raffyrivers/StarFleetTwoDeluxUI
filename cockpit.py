@@ -784,6 +784,7 @@ def _draw_damage(panel, state):
     pygame.draw.rect(disp.surf, FRAME_DIM, (18, 72, 44, 16), 1)
     systems_left = ["CMPTR", "S/L ENG", "HYP ENG", "SRS", "LRS", "SHD CTL"]
     systems_right = ["TRP CTL", "PHS CTL", "TELEPRT", "COM CTL", "TRAC BM", "PLS"]
+
     def system_color(name):
         health = state.damage.system_health.get(name, state.hull_pct)
         if health <= 0:
@@ -794,20 +795,32 @@ def _draw_damage(panel, state):
             return YELLOW, BLACK
         return GREEN, BLACK
 
-    top = 138
+    def system_label(rect, name, fg):
+        label = font(9, True).render(name, True, color(fg))
+        label_rect = label.get_rect()
+        label_rect.left = rect.left + 3
+        label_rect.centery = rect.centery
+        disp.surf.blit(label, label_rect)
+
+    top = 122
+    row_h = 13
+    row_gap = 1
+    left_w = 76
+    right_x = base_x + 150
+    right_w = velocity_rail.x - right_x - 2
     for i, name in enumerate(systems_left):
-        rect = pygame.Rect(base_x + 4, top + i * 13, 70, 12)
+        rect = pygame.Rect(base_x + 4, top + i * (row_h + row_gap), left_w, row_h)
         fg, text_fg = system_color(name)
         pygame.draw.rect(disp.surf, fg, rect)
         pygame.draw.rect(disp.surf, FRAME_DIM, rect, 1)
-        fit_text(disp.surf, name, rect, text_fg, 9, align="left")
+        system_label(rect, name, text_fg)
     for i, name in enumerate(systems_right):
-        rect = pygame.Rect(base_x + 154, top + i * 13, velocity_rail.x - base_x - 158, 12)
+        rect = pygame.Rect(right_x, top + i * (row_h + row_gap), right_w, row_h)
         fg, text_fg = system_color(name)
         pygame.draw.rect(disp.surf, fg, rect)
         pygame.draw.rect(disp.surf, FRAME_DIM, rect, 1)
-        fit_text(disp.surf, name, rect, text_fg, 9, align="left")
-    hull = pygame.Rect(base_x + 78, top, 78, 77)
+        system_label(rect, name, text_fg)
+    hull = pygame.Rect(base_x + 82, top, 66, len(systems_left) * row_h + (len(systems_left) - 1) * row_gap)
     fg, text_fg = system_color("HULL")
     pygame.draw.rect(disp.surf, fg, hull)
     pygame.draw.rect(disp.surf, FRAME_DIM, hull, 1)
