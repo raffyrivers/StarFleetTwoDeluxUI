@@ -53,6 +53,9 @@ class ShipState:
         self.tractor_enabled = False
         self.science_scope = "LRS"
         self.science_page = "Dept Q"
+        self.computer_page = "Star Systems"
+        self.self_destruct_armed = False
+        self.self_destructed = False
         self.notepad_text = ""
 
         self.feed_index = 1
@@ -287,6 +290,10 @@ class ShipState:
         if self.sim_frozen:
             return
         dt = max(0.0, min(float(dt), 0.25))
+        if self.self_destructed:
+            self._sync_systems()
+            self._sync_navigation()
+            return
         self.nav.evasive_phase += dt
         self._sync_systems()
         self.nav.move(dt, self.hyper_velocity, self.space_velocity, self.rest_mode)
@@ -415,6 +422,43 @@ class ShipState:
     def set_science_page(self, page):
         self.science_page = "Planet Data" if page == "Planet Data" else "Dept Q"
         self.add_message("Science", f"{self.science_page} display selected")
+
+    def set_computer_page(self, page):
+        valid = {"Combat Stats", "Information", "Landing Party", "Planets",
+                 "Star Systems", "Bases", "Intelligence", "Reference Lib",
+                 "Self-Destruct", "Special Services"}
+        self.computer_page = page if page in valid else "Star Systems"
+        if self.computer_page != "Self-Destruct" and self.self_destruct_armed:
+            self.self_destruct_armed = False
+            self.add_message("Computer", "self-destruct authorization cancelled")
+        elif self.computer_page != "Self-Destruct":
+            self.add_message("Computer", f"{self.computer_page} selected")
+
+    def activate_self_destruct(self):
+        self.computer_page = "Self-Destruct"
+        if self.self_destructed:
+            self.add_message("Computer", "self-destruct already completed")
+            return True
+        if not self.self_destruct_armed:
+            self.self_destruct_armed = True
+            self.add_message("Computer", "self-destruct authorization armed")
+            self.add_message("Computer", "select self-destruct again to confirm")
+            return False
+
+        self.self_destruct_armed = False
+        self.self_destructed = True
+        self.hyper_velocity = 0
+        self.space_velocity = 0
+        self.shields.up = False
+        self.inventory.energy_units = 0
+        self.damage.set_level(4)
+        self.status_flags["Distress"] = True
+        self.alert_status = "Red"
+        self.add_message("Computer", "SELF-DESTRUCT SEQUENCE COMPLETE")
+        self.add_message("Damage Control", "battlecruiser destroyed")
+        self._sync_systems()
+        self._sync_navigation()
+        return True
 
     def launch_probe(self):
         if self.inventory.probe_loaded <= 0:
@@ -601,6 +645,20 @@ class ShipState:
             probe.power = max(0, probe.power - dt * 0.35)
 
     def _sync_systems(self):
+        if self.self_destructed:
+            self.energy_usage = 0
+            self.alert_status = "Red"
+            self.status_flags = {
+                "LowPwr": True,
+                "LowSup": self.inventory.supplies < 250,
+                "LowTime": self.mission.time_left_days < 1.0,
+                "Medical": self.crew_manifest.medical_cases > 0,
+                "SecAlt": True,
+                "Mines": False,
+                "Distress": True,
+                "HullPn": True,
+            }
+            return
         threat_contacts = [c for c in self.scanner_contacts() if c.get("threat")]
         mines = any(c["kind"] == "mine" for c in threat_contacts)
         if self.shields.aas_enabled:

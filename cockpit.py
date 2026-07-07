@@ -215,9 +215,10 @@ def _build_computer():
     Display(panel, "options", (90, 250), (5, 5))
     Display(panel, "screen", (475, 250), (100, 5))
 
-
-    for b, label in enumerate(menu):
-        Button(panel, (6, 10 + b * 22, 78, 18), label,active=False,text_size=12)
+    menu_x, menu_y, menu_w, menu_h, menu_gap = 8, 7, 84, 22, 3
+    for i, label in enumerate(menu):
+        Button(panel, (menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h),
+               label, group="computer_menu", active=label == "Star Systems", text_size=10)
 
 def _build_data():
     panel = P["Data"]
@@ -289,12 +290,12 @@ def _build_strategic():
     Display(panel, "formation", (80, 120), (165, 12))
     Display(panel, "fleet pos", (200, 120), (255, 12))
     Display(panel, "fleet cmd", (570, 195), (5, 150))
-    Button(panel, (455, 10, 120, 17), "Escort Commands", text_size=12)
-    Button(panel, (455, 40, 120, 17), "Fleet Commands", text_size=12)
-    Button(panel, (455, 70, 120, 17), "Strategic Commands", text_size=12)
-    Button(panel, (455, 100, 120, 17), "Menu", text_size=12)
-    Button(panel, (455, 128, 58, 17), "Editor", text_size=12)
-    Button(panel, (517, 128, 58, 17), "View", text_size=12)
+    cmd_x, cmd_w, cmd_h = 455, 120, 20
+    for y, label in ((10, "Escort Commands"), (39, "Fleet Commands"),
+                     (68, "Strategic Commands"), (97, "Menu")):
+        Button(panel, (cmd_x, y, cmd_w, cmd_h), label, text_size=10)
+    Button(panel, (cmd_x, 126, 58, cmd_h), "Editor", text_size=10)
+    Button(panel, (cmd_x + 62, 126, 58, cmd_h), "View", text_size=10)
 
 def _toggle_security_board(panel, state):
     if panel.security_mode == "boarding":
@@ -646,57 +647,95 @@ def _draw_computer(state):
     panel = P["Computer Display"]
     options = panel.get("options")
     options.surf.fill(PANEL_BG)
-    menu = ["Combat Stats", "Information", "Landing Party", "Planets", "Star Systems",
-            "Bases", "Intelligence", "Reference Lib", "Self-Destruct", "Special Services"]
+    for element in panel.elements:
+        if isinstance(element, Button) and element.group == "computer_menu":
+            element.active = element.label == state.computer_page
+    screen = panel.get("screen")
+    screen.surf.fill(BLACK)
+    if state.computer_page == "Self-Destruct":
+        _draw_self_destruct_screen(screen, state)
+        return
 
-    #first for loop draws labels
-    # for i, label in enumerate(menu):
-    #     rect = pygame.Rect(6, 10 + i * 22, 78, 18)
-    #     face = BUTTON_FACE if i != 4 else FRAME
-    #     pygame.draw.rect(options.surf, face, rect)
-    #     pygame.draw.rect(options.surf, FRAME_DIM, rect, 1)
-    #     fg = RED if "Destruct" in label else BLACK
-    #     fit_text(options.surf, label, rect.inflate(-4, 0), fg, 9)
-    # screen = panel.get("screen")
-    # screen.surf.fill(BLACK)
-    # fit_text(screen.surf, "TACTICAL SYSTEM DATABASE", [4, 4, screen.rect.width - 8, 16],
-    #          WHITE, 10)
-    # headers = ["ID", "Rx", "Ry", "Cls", "S", "Plt"]
-    # classes = ["G", "M", "B", "K", "F", "A", "D", "O"]
-    # contact_rows = []
-    # for contact in state.tactical_contacts():
-    #     cls = {"planet": "M", "ship": "K", "base": "B", "mine": "N"}.get(contact["kind"], "G")
-    #     stat = "H" if contact.get("threat") else "N"
-    #     contact_rows.append([
-    #         contact["id"][:2], str(round(contact["x"])), str(round(contact["y"])),
-    #         cls, stat, "1" if contact["kind"] == "planet" else "0",
-    #     ])
-    # for block in range(4):
-    #     x = 8 + block * 114
-    #     for i, head in enumerate(headers):
-    #         fit_text(screen.surf, head, [x + i * 18, 22, 17, 11], CYAN, 8)
-    #     pygame.draw.line(screen.surf, FRAME_DIM, (x, 35), (x + 104, 35), 1)
-    #     for row in range(15):
-    #         system_id = block * 15 + row + 1
-    #         y = 38 + row * 13
-    #         if block == 0 and row < len(contact_rows):
-    #             cells = contact_rows[row]
-    #         else:
-    #             cells = [
-    #                 f"{system_id:02d}", f"{(system_id * 7) % 50}",
-    #                 f"{(system_id * 11) % 50}", classes[system_id % len(classes)],
-    #                 "N" if system_id % 5 else "H", str((system_id * 3) % 4),
-    #             ]
-    #         for i, cell in enumerate(cells):
-    #             fg = RED if cell == "H" else GREEN
-    #             if i == 3:
-    #                 fg = MAGENTA if cell in ("B", "O") else YELLOW
-    #             fit_text(screen.surf, cell, [x + i * 18, y, 17, 11], fg, 8)
-    # pygame.draw.rect(screen.surf, FRAME_DIM, (4, 18, screen.rect.width - 8, 222), 1)
-    # fit_text(screen.surf,
-    #          f"Status: {state.alert_status}  RG {state.nav_region[0]},{state.nav_region[1]}  "
-    #          f"Energy {state.energy_pct}%  Contacts {len(state.tactical_contacts())}",
-    #          [8, 230, screen.rect.width - 16, 14], CYAN, 9, align="left")
+    fit_text(screen.surf, "TACTICAL SYSTEM DATABASE", [4, 4, screen.rect.width - 8, 16],
+             WHITE, 10)
+    headers = ["ID", "Rx", "Ry", "Cls", "S", "Plt"]
+    classes = ["G", "M", "B", "K", "F", "A", "D", "O"]
+    contact_rows = []
+    for contact in state.tactical_contacts():
+        cls = {"planet": "M", "ship": "K", "base": "B", "mine": "N"}.get(contact["kind"], "G")
+        stat = "H" if contact.get("threat") else "N"
+        contact_rows.append([
+            contact["id"][:2], str(round(contact["x"])), str(round(contact["y"])),
+            cls, stat, "1" if contact["kind"] == "planet" else "0",
+        ])
+    for block in range(4):
+        x = 8 + block * 114
+        for i, head in enumerate(headers):
+            fit_text(screen.surf, head, [x + i * 18, 22, 17, 11], CYAN, 8)
+        pygame.draw.line(screen.surf, FRAME_DIM, (x, 35), (x + 104, 35), 1)
+        for row in range(15):
+            system_id = block * 15 + row + 1
+            y = 38 + row * 13
+            if block == 0 and row < len(contact_rows):
+                cells = contact_rows[row]
+            else:
+                cells = [
+                    f"{system_id:02d}", f"{(system_id * 7) % 50}",
+                    f"{(system_id * 11) % 50}", classes[system_id % len(classes)],
+                    "N" if system_id % 5 else "H", str((system_id * 3) % 4),
+                ]
+            for i, cell in enumerate(cells):
+                fg = RED if cell == "H" else GREEN
+                if i == 3:
+                    fg = MAGENTA if cell in ("B", "O") else YELLOW
+                fit_text(screen.surf, cell, [x + i * 18, y, 17, 11], fg, 8)
+    pygame.draw.rect(screen.surf, FRAME_DIM, (4, 18, screen.rect.width - 8, 222), 1)
+    fit_text(screen.surf,
+             f"Status: {state.alert_status}  RG {state.nav_region[0]},{state.nav_region[1]}  "
+             f"Energy {state.energy_pct}%  Contacts {len(state.tactical_contacts())}",
+             [8, 230, screen.rect.width - 16, 14], CYAN, 9, align="left")
+
+
+def _draw_self_destruct_screen(screen, state):
+    surf = screen.surf
+    rect = screen.rect
+    pygame.draw.rect(surf, FRAME_DIM, (4, 4, rect.width - 8, rect.height - 8), 1)
+    fit_text(surf, "SELF-DESTRUCT CONTROL", [8, 10, rect.width - 16, 22],
+             RED, 16, align="center")
+    pygame.draw.line(surf, FRAME_DIM, (16, 42), (rect.width - 16, 42), 1)
+
+    if state.self_destructed:
+        status = "SEQUENCE COMPLETE"
+        instruction = "BATTLECRUISER DESTROYED"
+        status_fg = RED
+    elif state.self_destruct_armed:
+        status = "AUTHORIZATION ARMED"
+        instruction = "SELECT SELF-DESTRUCT AGAIN TO CONFIRM"
+        status_fg = YELLOW
+    else:
+        status = "AUTHORIZATION REQUIRED"
+        instruction = "SELECT SELF-DESTRUCT TO ARM"
+        status_fg = CYAN
+
+    rows = [
+        ("Status", status, status_fg),
+        ("Hull", f"{state.hull_pct}%", RED if state.hull_pct < 40 else GREEN),
+        ("Power", f"{state.energy_pct}%", RED if state.energy_pct < 25 else GREEN),
+        ("Shields", "UP" if state.shields_up else "DOWN", GREEN if state.shields_up else RED),
+        ("Velocity", f"H{state.hyper_velocity} / S{state.space_velocity}", CYAN),
+        ("Alert", state.alert_status, RED if state.alert_status == "Red" else YELLOW),
+    ]
+    for i, (label, value, fg) in enumerate(rows):
+        y = 62 + i * 22
+        fit_text(surf, label + ":", [34, y, 100, 16], CYAN, 12, align="left")
+        fit_text(surf, value, [142, y, 260, 16], fg, 12, align="left")
+
+    box = pygame.Rect(36, 204, rect.width - 72, 28)
+    pygame.draw.rect(surf, BLACK, box)
+    pygame.draw.rect(surf, RED if state.self_destruct_armed or state.self_destructed else FRAME_DIM, box, 1)
+    fit_text(surf, instruction, box.inflate(-8, 0),
+             RED if state.self_destructed else (YELLOW if state.self_destruct_armed else CYAN),
+             12, align="center")
 
 
 def _draw_data(state):

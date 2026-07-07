@@ -94,6 +94,24 @@ class GameplayStateTests(unittest.TestCase):
         self.assertLess(ctx["defenders"], defenders)
         self.assertIn(ctx["status"], ("Boarding action underway", "Secured"))
 
+    def test_self_destruct_requires_confirmation_and_destroys_ship(self):
+        state = ShipState()
+        self.assertFalse(state.activate_self_destruct())
+        self.assertEqual(state.computer_page, "Self-Destruct")
+        self.assertTrue(state.self_destruct_armed)
+        self.assertGreater(state.energy_pct, 0)
+        self.assertGreater(state.hull_pct, 0)
+
+        self.assertTrue(state.activate_self_destruct())
+        self.assertTrue(state.self_destructed)
+        self.assertFalse(state.self_destruct_armed)
+        self.assertEqual(state.energy_pct, 0)
+        self.assertEqual(state.hull_pct, 0)
+        self.assertFalse(state.shields_up)
+        self.assertEqual(state.hyper_velocity, 0)
+        self.assertEqual(state.space_velocity, 0)
+        self.assertEqual(state.alert_status, "Red")
+
 
 if __name__ == "__main__":
     unittest.main()

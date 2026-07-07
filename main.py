@@ -120,6 +120,8 @@ class Cockpit:
             self._handle_engineering_button(button)
         elif button.panel is cockpit.P["Science Console"]:
             self._handle_science_button(button)
+        elif button.panel is cockpit.P["Computer Display"]:
+            self._handle_computer_button(button)
         elif button.panel is cockpit.P["Combat Console"]:
             self._handle_combat_button(button)
 
@@ -160,6 +162,13 @@ class Cockpit:
             self.state.set_science_scope("SRS" if button.active else "LRS")
         elif button.label in ("Dept Q", "Planet Data"):
             self.state.set_science_page(button.label)
+
+    def _handle_computer_button(self, button):
+        if button.group == "computer_menu":
+            if button.label == "Self-Destruct":
+                self.state.activate_self_destruct()
+            else:
+                self.state.set_computer_page(button.label)
 
     def _handle_combat_button(self, button):
         if button.label in ("BCS", "SCS"):
