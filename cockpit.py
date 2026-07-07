@@ -5,6 +5,7 @@ readouts are expressed as data and rendered through shared helpers so text
 always fits its box and the code stays compact.
 """
 
+
 import math
 import random
 import pygame
@@ -14,6 +15,41 @@ from core import (BLACK, PANEL_BG, FRAME, FRAME_DIM, BUTTON_FACE, CYAN, GREEN,
                   text_line, asset)
 from widgets import Panel, Button, Text, Display, CircleDisplay, StatusBar
 from video import VideoDisplay
+
+if not pygame.get_init():
+    pygame.init()
+if not pygame.display.get_init():
+    pygame.display.init()
+
+SHIP_DAMAGE = None
+
+DAMAGE_SUBSYSTEMS = [
+
+    # label      button x,y       label x,y
+    ("NAV CTR",   5,  12,   48, 16),
+    ("S/L ENG",   5,  38,   48, 42),
+    ("HYP ENG",   5,  64,   48, 68),
+    ("WARP SYS",  5,  90,   48, 94),
+    ("L.R.S.",    5, 116,   48,120),
+    ("SHD CTL",   5, 142,   48,146),
+
+    ("TRACTOR", 185, 12, 145, 16),
+    ("HYP CTL", 185, 38, 145, 42),
+    ("TELEPORT",185, 64, 145, 68),
+    ("COMM CTL",185, 90, 145, 94),
+    ("TRAC BEAM",185,116,140,120),
+    ("PLS",      185,142,170,146),
+]
+
+
+def get_ship_damage():
+    global SHIP_DAMAGE
+    if SHIP_DAMAGE is None:
+        SHIP_DAMAGE = pygame.image.load(
+            os.path.join(core.BASE_DIR, "assets", "shipdmg.png")
+        ).convert_alpha()
+    return SHIP_DAMAGE
+
 
 P = {}            # panels keyed by tab/name
 WARN_WORDS = {"CAUTION", "LOW", "HOLD", "QUEUED", "LOCK"}
@@ -227,15 +263,24 @@ def _build_data():
 
 def _build_engineering():
     panel = P["Engineering Console"]
+
+    # Existing displays
     Display(panel, "probes", (380, 98), (5, 25))
     Display(panel, "energy", (380, 90), (5, 145))
     Display(panel, "velocity", (250, 210), (386, 25))
+
+    # Existing labels
     Text(panel, (5, 8), "Probes Control", "cyan", 12)
     Text(panel, (400, 8), "Damage - Ship", "cyan", 12)
     Text(panel, (560, 8), "Velocity", "cyan", 12)
     Text(panel, (5, 128), "Energy", "cyan", 12)
-    Button(panel, (214, 6, 88, 17), "Operations", key=pygame.K_q, group="probe", text_size=12)
-    Button(panel, (306, 6, 78, 17), "Launch", key=pygame.K_w, group="probe", text_size=12)
+
+    # Existing buttons
+    Button(panel, (214, 6, 88, 17), "Operations",
+           key=pygame.K_q, group="probe", text_size=12)
+
+    Button(panel, (306, 6, 78, 17), "Launch",
+           key=pygame.K_w, group="probe", text_size=12)
 
 
 def _build_communication():
@@ -759,9 +804,9 @@ def _draw_data(state):
 def _draw_engineering(state):
     panel = P["Engineering Console"]
     _draw_probes(panel, state)
-    _draw_damage(panel, state)
     _draw_energy(panel, state)
     _draw_velocity(panel, state)
+    _draw_damage(panel, state)
 
 
 def _draw_probes(panel, state):
@@ -804,7 +849,26 @@ def _draw_probes(panel, state):
                              f"({state.nav_region[0]},{state.nav_region[1]})",
                              f"({round(state.system_x)},{round(state.system_y)})", "None"])
     table(disp.surf, headers, rows, 6, 6, widths, 14, 10)
-
+def build_damage_buttons(panel):
+    buttons = []
+    damage_origin = (398, 104)
+    for label, bx, by, _, _ in DAMAGE_SUBSYSTEMS:
+        col = 0 if bx < 100 else 1
+        x = damage_origin[0] + (col * 76)
+        y = damage_origin[1] + (by // 26) * 18
+        width = 67 if col == 0 else 63
+        b = Button(
+            panel,
+            (x, y, width, 16),
+            label,
+            text_size=7,
+            on_toggle=cycle_damage
+        )
+        b.face = GREEN
+        b.text_color = BLACK
+        b.damage_state = 0
+        buttons.append(b)
+    return buttons
 
 def _draw_damage(panel, state):
     disp = panel.get("velocity")  # rightmost display hosts the dynamic ship
@@ -865,6 +929,11 @@ def _draw_damage(panel, state):
     pygame.draw.rect(disp.surf, FRAME_DIM, hull, 1)
     fit_text(disp.surf, f"HULL {state.hull_pct}%", hull, text_fg, 10)
 
+    half_w = disp.rect.width // 2
+    img_w = max(120, min(half_w - 10, 180))
+    img_h = int(img_w * img.get_height() / img.get_width())
+    scaled = pygame.transform.smoothscale(img, (img_w, img_h))
+    disp.surf.blit(scaled, (8, 6))
 
 def _draw_energy(panel, state):
     disp = panel.get("energy")
