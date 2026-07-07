@@ -21,6 +21,42 @@ class GameplayStateTests(unittest.TestCase):
         self.assertEqual(state.nav_course, course)
         self.assertEqual(round((state.actual_heading - course) % 360), 45)
 
+    def test_plot_course_to_target_moves_ship_toward_target(self):
+        state = ShipState()
+        enemy = next(i for i, c in enumerate(state.contacts) if c.kind == "ship")
+        state.target_index = enemy
+        state.contacts[enemy].velocity = 0
+        before = state._distance_to(state.selected_target)
+        self.assertTrue(state.plot_course_to_target())
+        state.change_space_velocity(2)
+        state.tick(1.0)
+        after = state._distance_to(state.selected_target)
+        self.assertLess(after, before)
+
+    def test_nav_waypoint_sets_target_and_course(self):
+        state = ShipState()
+        self.assertTrue(state.set_nav_waypoint(45, 23))
+        self.assertEqual(state.selected_target.id, "NAV-WP")
+        self.assertEqual(state.nav_target, (45, 23))
+        self.assertEqual(state.nav_course, 90)
+
+    def test_stopped_ship_docks_or_orbits_when_close(self):
+        state = ShipState()
+        base = next(i for i, c in enumerate(state.contacts) if c.kind == "base")
+        state.target_index = base
+        state.system_x = state.contacts[base].x
+        state.system_y = state.contacts[base].y
+        state.tick(0.1)
+        self.assertEqual(state.nav_mode, "Docked")
+
+        planet = next(i for i, c in enumerate(state.contacts) if c.kind == "planet")
+        state.target_index = planet
+        state.system_x = state.contacts[planet].x
+        state.system_y = state.contacts[planet].y
+        state.nav.docked = False
+        state.tick(0.1)
+        self.assertEqual(state.nav_mode, "In Orbit")
+
     def test_aas_and_ecm_follow_manual_sensor_rules(self):
         state = ShipState()
         self.assertTrue(any(c["threat"] for c in state.scanner_contacts()))
@@ -35,11 +71,67 @@ class GameplayStateTests(unittest.TestCase):
 
     def test_weapon_fire_consumes_torpedo_and_reloads(self):
         state = ShipState()
+        enemy = next(i for i, c in enumerate(state.contacts) if c.kind == "ship")
+        state.target_index = enemy
+        state.contacts[enemy].x = state.system_x
+        state.contacts[enemy].y = state.system_y
         state.select_weapon("Trp1")
         torps = state.torpedoes
         self.assertTrue(state.fire_selected_weapon())
         self.assertEqual(state.torpedoes, torps - 1)
         self.assertGreater(state.weapon_reload[state.weapon_index], 0)
+
+    def test_combat_fire_strips_shields_and_damages_hull(self):
+        state = ShipState()
+        enemy = next(i for i, c in enumerate(state.contacts) if c.kind == "ship")
+        target = state.contacts[enemy]
+        state.target_index = enemy
+        target.x = state.system_x
+        target.y = state.system_y
+        target.shields_up = True
+        target.shield_strength = 20
+        target.hull_pct = 100
+        state.select_weapon("Trp1")
+
+        self.assertTrue(state.fire_selected_weapon())
+        self.assertFalse(target.shields_up)
+        self.assertEqual(target.shield_strength, 0)
+        self.assertLess(target.hull_pct, 100)
+        self.assertIn(target.status, ("DAMAGED", "CRIPPLED", "DESTROYED"))
+
+    def test_disable_setting_neutralizes_target_without_destroying_it(self):
+        state = ShipState()
+        enemy = next(i for i, c in enumerate(state.contacts) if c.kind == "ship")
+        target = state.contacts[enemy]
+        state.target_index = enemy
+        target.x = state.system_x
+        target.y = state.system_y
+        target.shields_up = False
+        target.shield_strength = 0
+        target.hull_pct = 40
+        state.set_weapon_setting("Disable")
+        state.select_weapon("Trp1")
+
+        self.assertTrue(state.fire_selected_weapon())
+        self.assertEqual(target.status, "DISABLED")
+        self.assertFalse(target.threat)
+        self.assertEqual(target.hull_pct, 15)
+
+    def test_enemy_return_fire_damages_ship_systems(self):
+        state = ShipState()
+        state.rng.seed(0)
+        enemy = next(i for i, c in enumerate(state.contacts) if c.kind == "ship")
+        target = state.contacts[enemy]
+        target.x = state.system_x
+        target.y = state.system_y
+        target.reload = 0
+        state.shields.facings = [0, 0, 0, 0]
+        state.shields.up = False
+        hull = state.hull_pct
+
+        state.tick(0.25)
+        self.assertLess(state.hull_pct, hull)
+        self.assertTrue(any(v < 100 for v in state.damage.system_health.values()))
 
     def test_probe_launch_and_boarding_gate(self):
         state = ShipState()

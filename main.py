@@ -13,6 +13,7 @@ Controls:
   l ; '          star map views
   q w            engineering probe views
   z x / c v      raise / lower hyperspace and normal-space velocity
+  r / [ ]        plot course / adjust course
   F1 / Ctrl+H    toggle control help
   F2-F5          set ship damage state
   Ctrl+1-4       fallback damage keys for media-key keyboards
@@ -98,6 +99,8 @@ class Cockpit:
                 button.activate()
                 self.side_effects(button)
                 return
+        if self.display_click(point):
+            return
         if self.notepad_rect().collidepoint(point):
             self.open_notepad()
 
@@ -145,6 +148,37 @@ class Cockpit:
         elif button.label == ">>":
             self.state.adjust_nav_sideslip(1)
             button.active = False
+
+    def display_click(self, point):
+        nav_panel = cockpit.P["Navigation"]
+        nav_readout = nav_panel.get("nav readout")
+        nav_rect = pygame.Rect(nav_panel.x + nav_readout.pos[0],
+                               nav_panel.y + nav_readout.pos[1],
+                               nav_readout.size[0], nav_readout.size[1])
+        if nav_rect.collidepoint(point):
+            local_y = point[1] - nav_rect.y
+            if 58 <= local_y <= 102:
+                self.state.plot_course_to_target()
+                return True
+            if 103 <= local_y <= 124:
+                self.state.target_next_contact()
+                self.state.plot_course_to_target()
+                return True
+            return False
+
+        console = cockpit.P["Navigation Console"]
+        system = console.get("system")
+        system_rect = pygame.Rect(console.x + system.pos[0], console.y + system.pos[1],
+                                  system.size[0], system.size[1])
+        if system_rect.collidepoint(point):
+            local_x = point[0] - system_rect.x
+            local_y = point[1] - system_rect.y
+            cx, cy = system.rect.center
+            system_x = self.state.system_x + (local_x - cx) / 5.0
+            system_y = self.state.system_y + (local_y - cy) / 5.0
+            self.state.select_nav_point(system_x, system_y)
+            return True
+        return False
 
     def _handle_primary_button(self, button):
         if button.label == "REST":
@@ -235,6 +269,12 @@ class Cockpit:
             if st.energy_usage == 20:
                 return
             st.change_space_velocity(-1)
+        elif key == pygame.K_r:
+            st.plot_course_to_target()
+        elif key == pygame.K_LEFTBRACKET:
+            st.set_nav_course(st.set_course - 15)
+        elif key == pygame.K_RIGHTBRACKET:
+            st.set_nav_course(st.set_course + 15)
         elif key in (pygame.K_F2, pygame.K_F3, pygame.K_F4, pygame.K_F5):
             st.set_damage_level({pygame.K_F2: 1, pygame.K_F3: 2,
                                  pygame.K_F4: 3, pygame.K_F5: 4}[key])

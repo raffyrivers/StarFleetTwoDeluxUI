@@ -26,6 +26,12 @@ class ShipState:
 
     TOP_ALERT_LABELS = ["LowPwr", "LowSup", "LowTime", "Medical",
                         "SecAlt", "Mines", "Distress", "HullPn"]
+    WEAPON_PROFILES = {
+        "Phaser": {"damage": 18, "range": 8.0, "energy": 16, "accuracy": 0.94, "falloff": 0.055},
+        "Trp1": {"damage": 42, "range": 16.0, "energy": 0, "accuracy": 0.86, "falloff": 0.035},
+        "Trp2": {"damage": 42, "range": 16.0, "energy": 0, "accuracy": 0.86, "falloff": 0.035},
+        "ObltrPd": {"damage": 70, "range": 20.0, "energy": 0, "accuracy": 0.78, "falloff": 0.030},
+    }
 
     def __init__(self):
         self.rng = random.Random(74216)
@@ -56,6 +62,7 @@ class ShipState:
         self.computer_page = "Star Systems"
         self.self_destruct_armed = False
         self.self_destructed = False
+        self.ship_destroyed = False
         self.notepad_text = ""
 
         self.feed_index = 1
@@ -290,7 +297,7 @@ class ShipState:
         if self.sim_frozen:
             return
         dt = max(0.0, min(float(dt), 0.25))
-        if self.self_destructed:
+        if self.self_destructed or self.ship_destroyed:
             self._sync_systems()
             self._sync_navigation()
             return
@@ -301,8 +308,10 @@ class ShipState:
         self._drain_energy(dt)
         self._drain_supplies(dt)
         self._reload_weapons(dt)
+        self._enemy_combat(dt)
         self.mission.advance(dt, self.rest_mode, self.hyper_velocity)
         self._update_probe_tracks(dt)
+        self._sync_nav_proximity()
         self._sync_systems()
         self._sync_navigation()
 
@@ -341,6 +350,72 @@ class ShipState:
             self.nav.in_orbit = False
             self.nav.docked = False
             self.add_message("Helm", f"sublight velocity {self.space_velocity}")
+
+    def set_nav_course(self, degrees):
+        self.nav.set_course = float(degrees) % 360
+        self.nav.sideslip = 0
+        self.add_message("Navigation", f"course set {round(self.nav.set_course) % 360}")
+        self._sync_navigation()
+
+    def plot_course_to_target(self):
+        target = self.selected_target
+        dx = target.x - self.nav.system_x
+        dy = target.y - self.nav.system_y
+        if abs(dx) < 0.01 and abs(dy) < 0.01:
+            self.add_message("Navigation", "target already at current position")
+            return False
+        self.set_nav_course(bearing_from_delta(dx, dy))
+        self.add_message("Navigation", f"plotted course to {target.name}")
+        return True
+
+    def select_nav_contact(self, index, plot=True):
+        if not self.contacts:
+            return False
+        self.target_index = int(index) % len(self.contacts)
+        target = self.selected_target
+        self.add_message("Navigation", f"target set {target.name}")
+        if plot:
+            self.plot_course_to_target()
+        else:
+            self._sync_navigation()
+        return True
+
+    def set_nav_waypoint(self, x, y, plot=True):
+        waypoint = next((c for c in self.contacts if c.id == "NAV-WP"), None)
+        x = clamp(float(x), 0, 49)
+        y = clamp(float(y), 0, 49)
+        if waypoint is None:
+            waypoint = Contact("NAV-WP", "Waypoint", "waypoint", x, y,
+                               region=(round(self.nav.region_x), round(self.nav.region_y)),
+                               threat=False, shields_up=False, prisoners=0, weapon="",
+                               hull_pct=100, shield_strength=0, status="PLOTTED")
+            self.contacts.append(waypoint)
+        else:
+            waypoint.x = x
+            waypoint.y = y
+            waypoint.region = (round(self.nav.region_x), round(self.nav.region_y))
+            waypoint.status = "PLOTTED"
+        self.target_index = self.contacts.index(waypoint)
+        self.add_message("Navigation", f"waypoint {round(x)}, {round(y)}")
+        if plot:
+            self.plot_course_to_target()
+        else:
+            self._sync_navigation()
+        return True
+
+    def select_nav_point(self, x, y, threshold=3.0):
+        x = clamp(float(x), 0, 49)
+        y = clamp(float(y), 0, 49)
+        candidates = [
+            (math.hypot(c.x - x, c.y - y), idx)
+            for idx, c in enumerate(self.contacts)
+            if c.kind != "waypoint" and c.status != "DESTROYED"
+        ]
+        if candidates:
+            distance, index = min(candidates)
+            if distance <= threshold:
+                return self.select_nav_contact(index, plot=True)
+        return self.set_nav_waypoint(x, y, plot=True)
 
     def set_nav_evasive(self, active):
         self.nav.evasive = bool(active)
@@ -389,18 +464,55 @@ class ShipState:
         if not bank.ready:
             self.add_message("Weapons", f"{bank.label} not ready")
             return False
+        target = self.selected_target
+        if self.weapon_setting == "Standby":
+            self.add_message("Weapons", "fire held: weapons on standby")
+            return False
+        if self.weapon_setting == "Conditional" and not target.threat and not target.shields_up:
+            self.add_message("Weapons", "conditional fire hold")
+            return False
+        if target.kind not in ("ship", "base", "mine"):
+            self.add_message("Weapons", "target lock refused")
+            return False
+        if target.status in ("DESTROYED", "CAPTURED"):
+            self.add_message("Weapons", f"{target.name} already neutralized")
+            return False
         if self.ecm_enabled:
             self.add_message("Weapons", "ECM blocks target lock")
+            return False
+        profile = self.WEAPON_PROFILES.get(bank.label, self.WEAPON_PROFILES["Phaser"])
+        distance = self._distance_to(target)
+        if distance > profile["range"]:
+            self.add_message("Weapons", f"{target.name} beyond {bank.label} range")
             return False
         if bank.ammo == "torpedo" and self.inventory.torpedoes <= 0:
             self.add_message("Weapons", "torpedo stores empty")
             return False
+        if bank.label == "ObltrPd" and self.inventory.pods <= 0:
+            self.add_message("Weapons", "obliterator pod stores empty")
+            return False
+        if bank.ammo == "energy" and self.inventory.energy_units < profile["energy"]:
+            self.add_message("Weapons", "insufficient weapon power")
+            return False
         if bank.ammo == "torpedo":
-            self.inventory.torpedoes -= 1
+            if bank.label == "ObltrPd":
+                self.inventory.pods = max(0, self.inventory.pods - 1)
+            else:
+                self.inventory.torpedoes -= 1
         else:
-            self.inventory.energy_units = max(0, self.inventory.energy_units - 5)
+            self.inventory.energy_units = max(0, self.inventory.energy_units - profile["energy"])
         bank.reload = bank.cooldown
-        self.add_message("Weapons", f"{bank.label} fired at {self.selected_target.name}")
+        accuracy = clamp(profile["accuracy"] - distance * profile["falloff"], 0.22, 0.98)
+        if self.combat_alignment == "SCS":
+            accuracy = min(0.98, accuracy + 0.08)
+        if target.kind == "mine":
+            accuracy = min(0.98, accuracy + 0.12)
+        if self.rng.random() > accuracy:
+            self.add_message("Weapons", f"{bank.label} missed {target.name}")
+            return True
+
+        outcome = self._apply_target_damage(target, profile["damage"], bank.label)
+        self.add_message("Weapons", outcome)
         return True
 
     def set_shield_mode(self, mode):
@@ -447,6 +559,7 @@ class ShipState:
 
         self.self_destruct_armed = False
         self.self_destructed = True
+        self.ship_destroyed = True
         self.hyper_velocity = 0
         self.space_velocity = 0
         self.shields.up = False
@@ -488,6 +601,10 @@ class ShipState:
         if target.kind not in ("ship", "base"):
             target.boarding_status = "No boarding target"
             self.add_message("Security", "boarding target invalid")
+            return False
+        if target.status == "DESTROYED":
+            target.boarding_status = "Target destroyed"
+            self.add_message("Security", "boarding impossible: target destroyed")
             return False
         if target.shields_up:
             target.boarding_status = "Blocked by shields"
@@ -547,12 +664,20 @@ class ShipState:
             "bearing": f"{bearing} deg",
             "velocity": f"{velocity:.1f}*",
             "weapon": self.selected_weapon,
+            "status": target.status,
+            "hull": target.hull_pct,
+            "shields": target.shield_strength if target.shields_up else 0,
         }
 
     def target_next_contact(self):
-        self.target_index = (self.target_index + 1) % len(self.contacts)
-        self.add_message("Targeting", f"target {self.selected_target.name}")
-        self._sync_navigation()
+        if not self.contacts:
+            return
+        for step in range(1, len(self.contacts) + 1):
+            index = (self.target_index + step) % len(self.contacts)
+            if self.contacts[index].status != "DESTROYED":
+                self.select_nav_contact(index, plot=False)
+                self.add_message("Targeting", f"target {self.selected_target.name}")
+                return
 
     # --- messages and reports -----------------------------------------
 
@@ -610,7 +735,8 @@ class ShipState:
 
     def _advance_contacts(self, dt):
         for contact in self.contacts:
-            contact.move(dt)
+            if contact.status not in ("DESTROYED", "DISABLED", "CAPTURED"):
+                contact.move(dt)
 
     def _drain_energy(self, dt):
         drain = self.energy_usage * dt * (0.08 if not self.rest_mode else 0.03)
@@ -631,6 +757,25 @@ class ShipState:
         for bank in self.weapon_banks:
             bank.reload = max(0.0, bank.reload - dt * rate)
 
+    def _enemy_combat(self, dt):
+        for contact in self.contacts:
+            if contact.kind not in ("ship", "base") or not contact.threat:
+                continue
+            if contact.status in ("DESTROYED", "DISABLED", "CAPTURED"):
+                continue
+            contact.reload = max(0.0, contact.reload - dt)
+            distance = self._distance_to(contact)
+            if distance > 12 or contact.reload > 0:
+                continue
+            contact.reload = 5.0 + self.rng.random() * 2.0
+            accuracy = clamp(0.80 - distance * 0.035 - (0.16 if self.nav.evasive else 0), 0.25, 0.90)
+            if self.rng.random() > accuracy:
+                self.add_message("Combat", f"{contact.name} attack missed")
+                continue
+            damage = 12 if contact.weapon.startswith("P") else 18
+            report = self._apply_ship_damage(damage, contact)
+            self.add_message("Combat", report)
+
     def _update_probe_tracks(self, dt):
         for probe in self.active_probes:
             contact = next((c for c in self.contacts if c.id == probe.target), None)
@@ -644,8 +789,120 @@ class ShipState:
                 probe.status = "Mapping" if dist < 0.8 else "Outbound"
             probe.power = max(0, probe.power - dt * 0.35)
 
+    def _sync_nav_proximity(self):
+        if self.hyper_velocity or self.space_velocity:
+            self.nav.in_orbit = False
+            self.nav.docked = False
+            return
+        target = self.selected_target
+        if target.status == "DESTROYED":
+            self.nav.in_orbit = False
+            self.nav.docked = False
+            return
+        distance = self._distance_to(target)
+        if target.kind == "base" and distance <= 0.9:
+            self.nav.docked = True
+            self.nav.in_orbit = False
+        elif target.kind == "planet" and distance <= 1.5:
+            self.nav.in_orbit = True
+            self.nav.docked = False
+        else:
+            self.nav.in_orbit = False
+            self.nav.docked = False
+
+    def _apply_target_damage(self, target, damage, weapon_name):
+        remaining = int(damage)
+        shield_hit = 0
+        if target.shields_up and target.shield_strength > 0:
+            shield_hit = min(target.shield_strength, remaining)
+            target.shield_strength -= shield_hit
+            remaining -= shield_hit
+            if target.shield_strength <= 0:
+                target.shields_up = False
+                target.shield_strength = 0
+                target.status = "SHIELDS DOWN"
+
+        if remaining <= 0:
+            return f"{weapon_name} hit {target.name} shields -{shield_hit}"
+
+        if target.kind == "mine":
+            target.hull_pct = 0
+            target.threat = False
+            target.status = "DESTROYED"
+            target.velocity = 0
+            return f"{target.name} destroyed"
+
+        if self.weapon_setting == "Disable":
+            target.hull_pct = max(15, target.hull_pct - remaining)
+            if target.hull_pct <= 35:
+                target.status = "DISABLED"
+                target.threat = False
+                target.velocity = 0
+                target.weapon = ""
+                target.boarding_status = "Ready for boarding"
+                return f"{target.name} disabled"
+            target.status = "DAMAGED"
+            return f"{target.name} hull damaged to {target.hull_pct}%"
+
+        target.hull_pct = max(0, target.hull_pct - remaining)
+        if target.hull_pct <= 0:
+            target.status = "DESTROYED"
+            target.threat = False
+            target.shields_up = False
+            target.shield_strength = 0
+            target.velocity = 0
+            target.weapon = ""
+            target.defenders = 0
+            target.boarding_status = "Target destroyed"
+            return f"{target.name} destroyed"
+        if target.hull_pct <= 35:
+            target.status = "CRIPPLED"
+            target.threat = False
+            target.velocity *= 0.35
+            return f"{target.name} crippled"
+        target.status = "DAMAGED"
+        return f"{target.name} hull damaged to {target.hull_pct}%"
+
+    def _apply_ship_damage(self, damage, attacker):
+        remaining = int(damage)
+        if self.shields.up and sum(self.shields.facings) > 0:
+            dx = attacker.x - self.nav.system_x
+            dy = attacker.y - self.nav.system_y
+            bearing = bearing_from_delta(dx, dy)
+            facing = int(((bearing + 45) % 360) // 90) % 4
+            absorbed = min(self.shields.facings[facing], remaining)
+            self.shields.facings[facing] -= absorbed
+            remaining -= absorbed
+            if remaining <= 0:
+                return f"{attacker.name} hit shield {facing + 1}"
+            if sum(self.shields.facings) <= 0:
+                self.shields.up = False
+
+        self._set_ship_hull_pct(self.damage.hull_pct - remaining)
+        system = self.rng.choice(list(self.damage.system_health))
+        self.damage.system_health[system] = max(0, self.damage.system_health[system] - remaining * 2)
+        if self.damage.hull_pct <= 0:
+            self.ship_destroyed = True
+            self.hyper_velocity = 0
+            self.space_velocity = 0
+            self.shields.up = False
+            self.inventory.energy_units = 0
+            return f"{attacker.name} destroyed the battlecruiser"
+        return f"{attacker.name} scored hull hit -{remaining}%"
+
+    def _set_ship_hull_pct(self, pct):
+        self.damage.hull_pct = round(clamp(pct, 0, 100))
+        if self.damage.hull_pct <= 0:
+            self.damage.level = 4
+        elif self.damage.hull_pct < 40:
+            self.damage.level = 3
+        elif self.damage.hull_pct < 75:
+            self.damage.level = 2
+        else:
+            self.damage.level = 1
+
     def _sync_systems(self):
-        if self.self_destructed:
+        if self.self_destructed or self.ship_destroyed:
             self.energy_usage = 0
             self.alert_status = "Red"
             self.status_flags = {

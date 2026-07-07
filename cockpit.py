@@ -1107,6 +1107,10 @@ def _draw_target_data(panel, state):
     target_name = state.selected_target["name"][:17]
     fit_text(panel.surf, target_name, [box.x + 6, box.y + 78, box.w - 12, 14],
              YELLOW if state.selected_target.get("threat") else GREEN, 9, align="left")
+    fit_text(panel.surf,
+             f"H:{solution['hull']} S:{solution['shields']} {solution['status'][:8]}",
+             [box.x + 6, box.y + 62, box.w - 12, 13],
+             RED if solution["hull"] <= 35 else CYAN, 8, align="left")
 
 
 def _arc_quadrant(surface, center, r_in, r_out, start, end, col):
