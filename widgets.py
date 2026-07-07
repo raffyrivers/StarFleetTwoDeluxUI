@@ -29,7 +29,7 @@ def cycle_damage(button):
 class Panel:
     """A framed region with an optional tab label that hosts child elements."""
 
-    def __init__(self, x, y, width, height, tab_label="", tab_width=0):
+    def __init__(self, x, y, width, height, tab_label, tab_width=0, has_tab=True):
         self.x = x
         self.y = y
         self.width = width
@@ -39,6 +39,7 @@ class Panel:
         self.tab_label = tab_label
         self.tab_width = tab_width
         self.elements = []
+        self.has_tab = has_tab
 
     def add(self, element):
         self.elements.append(element)
@@ -66,7 +67,7 @@ class Panel:
         for element in order:
             element.draw()
         surface.blit(self.surf, (self.x, self.y))
-        if self.tab_label:
+        if self.has_tab:
             tab_w = self.tab_width or min(self.width, len(self.tab_label) * 9 + 16)
             tab = pygame.Rect(self.x, self.y - 16, tab_w, 18)
             pygame.draw.rect(surface, PANEL_BG, tab)
@@ -75,6 +76,10 @@ class Panel:
             pygame.draw.line(surface, FRAME_DIM, tab.bottomleft, tab.bottomright, 2)
             pygame.draw.line(surface, FRAME_DIM, tab.topright, tab.bottomright, 2)
             fit_text(surface, self.tab_label, tab.inflate(-6, 0), BLACK, 13)
+        else:
+            tab_w = self.tab_width or min(self.width, len(self.tab_label) * 9 + 16)
+            tab = pygame.Rect(self.x, self.y + 3, tab_w, 18)
+            fit_text(surface, self.tab_label, tab.inflate(6, 0), BLACK, 13)
 
 
 class Button:
@@ -283,7 +288,7 @@ class StatusBar:
             elif i == slot:
                 bar.fill = GREEN
             else:
-                bar.fill = GREEN
+                bar.fill = BUTTON_FACE
 
     @staticmethod
     def draw_bars(surface, top, menu, notepad):

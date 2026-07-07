@@ -1,7 +1,7 @@
 # Star Fleet II Deluxe Cockpit UI
 
 A pygame command screen modeled on the Krellan battlecruiser interface from
-Star Fleet II Deluxe. Fourteen console panels show navigation, science, combat,
+Star Fleet II Deluxe. Thirteen console panels show navigation, combat,
 engineering, strategic, security, and communication readouts. Every on-screen
 button responds to both mouse clicks and a keyboard shortcut.
 
@@ -28,18 +28,18 @@ resolution.
 Panels:
 
 - Navigation Console: orbital display, system map, nav view selector
-- Science Console: long and short range scope
 - Primary Display: main viewscreen
 - Status Indicators: ten alert lamps and target distance
 - Navigation: current course and target readout
 - Star Map: mercator, nav, and war map selector
 - Computer Display: mission query and ship status
 - Data: ship stores and complement
-- Combat Console: weapons, shields, and fire grid
+- Combat Console: weapons, shields, target data, alignment controls, and fire grid
+- Science Console: LRS/SRS scanner scope and science data selectors
 - Strategic Command Console: fleet orders and order queue
 - Engineering Console: probe control, damage, energy
 - Communication Console: message feed
-- Security Console: deck status and prisoner roster
+- Security Console: deck status and interrogation queue
 - Commanders Log: standing orders
 
 ## Controls
@@ -49,6 +49,7 @@ Esc            close help or quit
 F1 / Ctrl+H    toggle control help
 F11            toggle fullscreen and windowed
 Mouse click    activate any button
+Ctrl+N         open internal mission notepad
 1-8            latch top alert indicators
 i o p          navigation console views
 l ; '          star map views
@@ -66,6 +67,17 @@ Right Shift    target board
 SNAP button    save current cockpit screenshot to snapshots/
 ```
 
+Notepad commands:
+
+```
+Ctrl+S         save notes and exit
+Ctrl+M         show notepad command menu
+Ctrl+End       clear the visible notepad
+Ctrl+Home      move cursor to upper-left
+Esc            exit without saving, after confirmation
+Enter          insert a blank line
+```
+
 If pressing an F-key changes system volume or mute, the keyboard is sending a
 media key instead of a function key. Use Fn+F-key, enable Fn Lock/F-lock, or use
 the Ctrl fallback shortcuts above.
@@ -75,13 +87,24 @@ the Ctrl fallback shortcuts above.
 ```
 main.py       window, scaling, input routing, frame loop
 cockpit.py    panel layout and per panel build and draw
+gameplay.py   typed gameplay models and manual-inspired constants
+state.py      simulation facade read by every console
 widgets.py    Panel, Button, Text, Display, StatusBar
 video.py      video displays with starfield fallback
-state.py      ship state
 core.py       palette, fonts, asset loading, text fitting
 assets/       images and video clips
+tests/        gameplay state checks
 snapshots/    local screenshots, ignored by git
 ```
 
 Ship values (24 torpedoes, 4000 power units, 1000 tons supplies, 150 shock
-troops, c-factor 8 hyperspace) follow the Star Fleet II training manual.
+troops, AAS shield behavior, ECM sensor limitations, sideslip/evasive travel,
+boarding restrictions, and weapon readiness/reload behavior) follow the Star
+Fleet II training manual where they map cleanly to this cockpit simulation.
+
+## Validation
+
+```
+python -m py_compile cockpit.py main.py state.py gameplay.py
+python -m unittest discover -s tests
+```
