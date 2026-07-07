@@ -14,18 +14,6 @@ def reset_buttons():
     BUTTONS.clear()
 
 
-DAMAGE_COLORS = [GREEN, YELLOW, RED, GREY]
-
-
-def cycle_damage(button):
-    """Cycles subsystem state: Green -> Yellow -> Red -> Grey -> Green."""
-    if not hasattr(button, "damage_state"):
-        button.damage_state = 0
-
-    button.damage_state = (button.damage_state + 1) % 4
-    button.face = DAMAGE_COLORS[button.damage_state]
-
-
 class Panel:
     """A framed region with an optional tab label that hosts child elements."""
 
@@ -98,16 +86,6 @@ class Button:
         self.on_toggle = on_toggle
         self.hover = False
         self.z = 2
-
-        # Optional custom face color 
-        self.face = None
-
-        # Optional custom text color
-        self.text_color = BLACK
-
-        # Optional custom callback after drawing
-        self.custom_draw = None
-
         panel.add(self)
         BUTTONS.append(self)
 
@@ -120,40 +98,20 @@ class Button:
 
     def draw(self):
         rect = self.local
-
-        # Use custom face color if one is assigned.
-        if self.face is not None:
-            face = self.face
-        elif self.active:
+        if self.active:
             face = BUTTON_ACTIVE
         elif self.hover:
             face = BUTTON_HOVER
         else:
             face = BUTTON_FACE
-
         pygame.draw.rect(self.panel.surf, face, rect)
-
-        pygame.draw.line(self.panel.surf, BEVEL_LIGHT,
-                        rect.topleft, rect.topright)
-        pygame.draw.line(self.panel.surf, BEVEL_LIGHT,
-                        rect.topleft, rect.bottomleft)
-        pygame.draw.line(self.panel.surf, BEVEL_DARK,
-                        rect.bottomleft, rect.bottomright)
-        pygame.draw.line(self.panel.surf, BEVEL_DARK,
-                        rect.topright, rect.bottomright)
-
+        pygame.draw.line(self.panel.surf, BEVEL_LIGHT, rect.topleft, rect.topright)
+        pygame.draw.line(self.panel.surf, BEVEL_LIGHT, rect.topleft, rect.bottomleft)
+        pygame.draw.line(self.panel.surf, BEVEL_DARK, rect.bottomleft, rect.bottomright)
+        pygame.draw.line(self.panel.surf, BEVEL_DARK, rect.topright, rect.bottomright)
+        text_color = BLACK if self.active or face == BUTTON_FACE else BLACK
         if self.label:
-            fit_text(
-                self.panel.surf,
-                self.label,
-                rect,
-                self.text_color,
-                self.text_size
-            )
-
-        # Optional extra drawing
-        if self.custom_draw:
-            self.custom_draw(self)
+            fit_text(self.panel.surf, self.label, rect, text_color, self.text_size)
 
     def activate(self):
         """Toggle (or set, for grouped radios) and notify the handler."""
