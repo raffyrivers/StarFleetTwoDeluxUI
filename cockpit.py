@@ -462,30 +462,34 @@ def _draw_science_scope(panel, state, scope_label="scope", compact=False):
             pygame.draw.line(scope.surf, WHITE, (cx - 9, ty), (cx + 9, ty), 2)
 
     range_units = state.science_range()
-    scale = (radius - 8) / range_units
-    contacts = state.science_contacts()
-    if state.science_page == "Planet Data":
-        contacts = [contact for contact in contacts if contact["kind"] == "planet"]
-    for contact in contacts:
-        dx = int((contact["x"] - state.system_x) * 5)
-        dy = int((contact["y"] - state.system_y) * 5)
-        if math.hypot(dx / 5, dy / 5) > range_units:
-            continue
-        px = int(cx + (contact["x"] - state.system_x) * scale)
-        py = int(cy + (contact["y"] - state.system_y) * scale)
-        if math.hypot(px - cx, py - cy) > radius - 5:
-            continue
-        dot = RED if contact.get("threat") else GREEN
-        pygame.draw.circle(scope.surf, dot, (px, py), 3 if not compact else 2)
-    heading = math.radians(state.actual_heading - 90)
-    ship_tip = 8 if compact else 10
-    ship_wing = 6 if compact else 8
-    ship = [
-        (cx + int(math.cos(heading) * ship_tip), cy + int(math.sin(heading) * ship_tip)),
-        (cx + int(math.cos(heading + 2.45) * ship_wing), cy + int(math.sin(heading + 2.45) * ship_wing)),
-        (cx + int(math.cos(heading - 2.45) * ship_wing), cy + int(math.sin(heading - 2.45) * ship_wing)),
-    ]
-    pygame.draw.polygon(scope.surf, RED, ship)
+    if range_units <= 0:
+        fit_text(scope.surf, "OFFLINE", [cx - radius + 8, cy - 8, radius * 2 - 16, 16],
+                 RED, 10, align="center")
+    else:
+        scale = (radius - 8) / range_units
+        contacts = state.science_contacts()
+        if state.science_page == "Planet Data":
+            contacts = [contact for contact in contacts if contact["kind"] == "planet"]
+        for contact in contacts:
+            dx = int((contact["x"] - state.system_x) * 5)
+            dy = int((contact["y"] - state.system_y) * 5)
+            if math.hypot(dx / 5, dy / 5) > range_units:
+                continue
+            px = int(cx + (contact["x"] - state.system_x) * scale)
+            py = int(cy + (contact["y"] - state.system_y) * scale)
+            if math.hypot(px - cx, py - cy) > radius - 5:
+                continue
+            dot = RED if contact.get("threat") else GREEN
+            pygame.draw.circle(scope.surf, dot, (px, py), 3 if not compact else 2)
+        heading = math.radians(state.actual_heading - 90)
+        ship_tip = 8 if compact else 10
+        ship_wing = 6 if compact else 8
+        ship = [
+            (cx + int(math.cos(heading) * ship_tip), cy + int(math.sin(heading) * ship_tip)),
+            (cx + int(math.cos(heading + 2.45) * ship_wing), cy + int(math.sin(heading + 2.45) * ship_wing)),
+            (cx + int(math.cos(heading - 2.45) * ship_wing), cy + int(math.sin(heading - 2.45) * ship_wing)),
+        ]
+        pygame.draw.polygon(scope.surf, RED, ship)
     pygame.draw.circle(scope.surf, WHITE, (cx, cy), radius, 2)
 
     if compact:
