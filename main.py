@@ -196,6 +196,9 @@ class Cockpit:
             self.state.set_science_scope("SRS" if button.active else "LRS")
         elif button.label in ("Dept Q", "Planet Data"):
             self.state.set_science_page(button.label)
+        elif button.label == "Board":
+            self.state.attempt_boarding()
+            button.active = False
 
     def _handle_computer_button(self, button):
         if button.group == "computer_menu":
@@ -207,6 +210,10 @@ class Cockpit:
     def _handle_combat_button(self, button):
         if button.label in ("BCS", "SCS"):
             self.state.set_combat_alignment(button.label)
+        elif button.label == "SRS":
+            self.state.set_science_scope("SRS" if button.active else "LRS")
+        elif button.label in ("Dept Q", "Planet Data"):
+            self.state.set_science_page(button.label)
         elif button.label in self.state.weapons:
             self.state.select_weapon(button.label)
         elif button.label == "ECM":

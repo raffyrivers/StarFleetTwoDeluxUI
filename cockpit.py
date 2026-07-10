@@ -137,11 +137,7 @@ def _build_primary():
 
 def _build_science():
     panel = P["Science Console"]
-    CircleDisplay(panel, "scope", (12, 36), 84)
-    Button(panel, (148, 30, 36, 18), "SRS", text_size=11)
-    Button(panel, (12, 196, 72, 18), "Dept Q", group="science_page",
-           active=True, text_size=11)
-    Button(panel, (96, 196, 88, 18), "Planet Data", group="science_page", text_size=11)
+    Button(panel, (132, 26, 50, 18), "Board", key=pygame.K_RSHIFT, text_size=10)
 
 
 def _build_navigation():
@@ -253,6 +249,7 @@ def _build_communication():
 def _build_combat():
     panel = P["Combat Console"]
     Display(panel, "grid", (470, 470), (5, 25))
+    CircleDisplay(panel, "combat science scope", (493, 410), 45)
     Text(panel, (5, 6), "Combat Information Display", "cyan", 11)
     Text(panel, (515, 6), "Alignment:", BLACK, 11)
     Button(panel, (586, 3, 38, 20), "BCS", group="combat_align", active=True, text_size=11)
@@ -279,9 +276,12 @@ def _build_combat():
                active=i == 0, text_size=10)
     Button(panel, (610, 92, 34, 18), "ECM", text_size=10)
     for i, name in enumerate(("Ph", "T1", "T2", "Cont")):
-        Button(panel, (493 + i * 39, 353, 37, 30), name, group="weapon_condition",
+        Button(panel, (493 + i * 39, 352, 37, 22), name, group="weapon_condition",
                active=i == 0, text_size=10)
-    Button(panel, (596, 398, 50, 18), "Board", key=pygame.K_RSHIFT, text_size=10)
+    Button(panel, (612, 388, 34, 18), "SRS", text_size=10)
+    Button(panel, (586, 418, 58, 16), "Dept Q", group="science_page",
+           active=True, text_size=9)
+    Button(panel, (586, 438, 58, 16), "Planet Data", group="science_page", text_size=8)
 
 
 def _build_strategic():
@@ -429,7 +429,11 @@ def _draw_primary(state):
 
 def _draw_science(state):
     panel = P["Science Console"]
-    scope = panel.get("scope")
+    _draw_target_data(panel, state, pygame.Rect(5, 20, 182, 198))
+
+
+def _draw_science_scope(panel, state, scope_label="scope", compact=False):
+    scope = panel.get(scope_label)
     scope.surf.fill(PANEL_BG)
     cx, cy = scope.rect.center
     radius = scope.radius - 1
@@ -445,11 +449,12 @@ def _draw_science(state):
 
     clipped_line_horizontal(cy)
     clipped_line_vertical(cx)
+    tick_step = 12 if compact else 24
     for tick in range(-3, 4):
         if tick == 0:
             continue
-        tx = cx + tick * 24
-        ty = cy + tick * 24
+        tx = cx + tick * tick_step
+        ty = cy + tick * tick_step
         if abs(tx - cx) < radius:
             pygame.draw.line(scope.surf, WHITE, (tx, cy - 9), (tx, cy + 9), 2)
         if abs(ty - cy) < radius:
@@ -467,19 +472,27 @@ def _draw_science(state):
             continue
         px = int(cx + (contact["x"] - state.system_x) * scale)
         py = int(cy + (contact["y"] - state.system_y) * scale)
+        if math.hypot(px - cx, py - cy) > radius - 5:
+            continue
         dot = RED if contact.get("threat") else GREEN
-        pygame.draw.circle(scope.surf, dot, (px, py), 3)
+        pygame.draw.circle(scope.surf, dot, (px, py), 3 if not compact else 2)
     heading = math.radians(state.actual_heading - 90)
+    ship_tip = 8 if compact else 10
+    ship_wing = 6 if compact else 8
     ship = [
-        (cx + int(math.cos(heading) * 10), cy + int(math.sin(heading) * 10)),
-        (cx + int(math.cos(heading + 2.45) * 8), cy + int(math.sin(heading + 2.45) * 8)),
-        (cx + int(math.cos(heading - 2.45) * 8), cy + int(math.sin(heading - 2.45) * 8)),
+        (cx + int(math.cos(heading) * ship_tip), cy + int(math.sin(heading) * ship_tip)),
+        (cx + int(math.cos(heading + 2.45) * ship_wing), cy + int(math.sin(heading + 2.45) * ship_wing)),
+        (cx + int(math.cos(heading - 2.45) * ship_wing), cy + int(math.sin(heading - 2.45) * ship_wing)),
     ]
     pygame.draw.polygon(scope.surf, RED, ship)
     pygame.draw.circle(scope.surf, WHITE, (cx, cy), radius, 2)
 
-    fit_text(panel.surf, state.science_scope, [10, 20, 52, 16], BLACK, 16, align="left")
-    page_rect = pygame.Rect(68, 20, 76, 16)
+    if compact:
+        fit_text(panel.surf, state.science_scope, [492, 388, 40, 14], BLACK, 10, align="left")
+        page_rect = pygame.Rect(536, 388, 72, 14)
+    else:
+        fit_text(panel.surf, state.science_scope, [10, 20, 52, 16], BLACK, 16, align="left")
+        page_rect = pygame.Rect(68, 20, 76, 16)
     fg = CYAN if state.science_page == "Dept Q" else GREEN
     fit_text(panel.surf, state.science_page, page_rect, fg, 9, align="right")
 
@@ -991,7 +1004,7 @@ def _draw_combat(state):
     _draw_weapons(panel, state)
     _draw_shields(panel, state)
     _draw_fire_controls(panel, state)
-    _draw_target_data(panel, state)
+    _draw_combat_science(panel, state)
 
 
 def _sync_combat_buttons(panel, state):
@@ -1008,6 +1021,10 @@ def _sync_combat_buttons(panel, state):
                 element.active = element.label == active_by_group[element.group]
             elif element.label == "ECM":
                 element.active = state.ecm_enabled
+            elif element.label == "SRS":
+                element.active = state.science_scope == "SRS"
+            elif element.group == "science_page":
+                element.active = element.label == state.science_page
 
 
 def _draw_weapons(panel, state):
@@ -1073,28 +1090,36 @@ def _draw_shields(panel, state):
 
 
 def _draw_fire_controls(panel, state):
-    box = pygame.Rect(485, 346, 165, 46)
+    box = pygame.Rect(485, 346, 165, 36)
     pygame.draw.rect(panel.surf, PANEL_BG, box)
     pygame.draw.rect(panel.surf, GREY, box, 2)
     for i, label in enumerate(("Ph", "T1", "T2", "Cont")):
-        cell = pygame.Rect(box.x + 8 + i * 39, box.y + 7, 37, 30)
+        cell = pygame.Rect(box.x + 8 + i * 39, box.y + 6, 37, 22)
         pygame.draw.rect(panel.surf, GREEN if label != "Cont" else CYAN, cell)
         pygame.draw.rect(panel.surf, BLACK, cell, 1)
-        manual = "Manual" if label != "Cont" else ""
-        fit_text(panel.surf, manual, [cell.x, cell.y + 19, cell.w, 9], BLACK, 7)
-    fit_text(panel.surf, state.weapon_condition, [box.x + 8, box.y + 36, 146, 9],
+    fit_text(panel.surf, state.weapon_condition, [box.x + 8, box.y + 27, 146, 8],
              GREEN, 8, align="right")
 
 
-def _draw_target_data(panel, state):
-    box = pygame.Rect(485, 396, 165, 100)
+def _draw_combat_science(panel, state):
+    box = pygame.Rect(485, 384, 165, 122)
+    pygame.draw.rect(panel.surf, PANEL_BG, box)
+    pygame.draw.rect(panel.surf, GREY, box, 2)
+    _draw_science_scope(panel, state, "combat science scope", compact=True)
+
+
+def _draw_target_data(panel, state, box=None):
+    box = pygame.Rect(box or (485, 396, 165, 100))
     pygame.draw.rect(panel.surf, BLACK, box)
     pygame.draw.rect(panel.surf, GREY, box, 2)
     fit_text(panel.surf, "Target Data", [box.x + 6, box.y + 4, 86, 15], CYAN, 10, align="left")
     solution = state.target_solution()
     headers = ["R.Pos", "Brng", "Vel", "Wpn"]
     values = [solution["rpos"], solution["bearing"], solution["velocity"], solution["weapon"][:4]]
-    widths = [50, 43, 34, 34]
+    available = box.w - 8
+    widths = [max(38, int(available * 0.31)), max(34, int(available * 0.27)),
+              max(30, int(available * 0.21)), max(30, int(available * 0.21))]
+    widths[-1] += available - sum(widths)
     x = box.x + 4
     y = box.y + 28
     for i, header in enumerate(headers):
@@ -1105,11 +1130,11 @@ def _draw_target_data(panel, state):
         x += widths[i]
     pygame.draw.line(panel.surf, FRAME_DIM, (x, y), (x, box.bottom - 3), 1)
     target_name = state.selected_target["name"][:17]
-    fit_text(panel.surf, target_name, [box.x + 6, box.y + 78, box.w - 12, 14],
+    fit_text(panel.surf, target_name, [box.x + 6, box.bottom - 22, box.w - 12, 14],
              YELLOW if state.selected_target.get("threat") else GREEN, 9, align="left")
     fit_text(panel.surf,
              f"H:{solution['hull']} S:{solution['shields']} {solution['status'][:8]}",
-             [box.x + 6, box.y + 62, box.w - 12, 13],
+             [box.x + 6, box.bottom - 38, box.w - 12, 13],
              RED if solution["hull"] <= 35 else CYAN, 8, align="left")
 
 
