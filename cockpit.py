@@ -207,6 +207,7 @@ class _Indicator:
 
 def _build_computer():
     panel = P["Computer Display"]
+    panel.computer_mode = "default"
     menu = ["Combat Stats", "Information", "Landing Party", "Planets", "Star Systems",
             "Bases", "Intelligence", "Reference Lib", "Self-Destruct", "Special Services"]
     Display(panel, "options", (90, 250), (5, 5))
@@ -214,8 +215,46 @@ def _build_computer():
 
     menu_x, menu_y, menu_w, menu_h, menu_gap = 8, 7, 84, 22, 3
     for i, label in enumerate(menu):
-        Button(panel, (menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h),
-               label, group="computer_menu", active=label == "Star Systems", text_size=10)
+
+        if label == "Combat Stats":
+            Button(panel,(menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h), label,group="computer_menu",
+                   on_toggle=lambda b, mode=label.lower(): setattr(panel,"computer_mode",mode if b.active else "default"))
+
+        if label == "Information":
+            Button(panel,(menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h),label,group="computer_menu",
+                   on_toggle=lambda b, mode=label.lower(): setattr(panel,"computer_mode",mode if b.active else "default"))
+
+        if label == "Landing Party":
+            Button(panel, (menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h), label, group="computer_menu",
+                   on_toggle=lambda b, mode=label.lower(): setattr(panel, "computer_mode", mode if b.active else "default"))
+
+        if label == "Planets":
+            Button(panel, (menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h), label, group="computer_menu",
+                   on_toggle=lambda b, mode=label.lower(): setattr(panel, "computer_mode", mode if b.active else "default"))
+
+        if label == "Star Systems":
+            Button(panel,(menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h),label,group="computer_menu",
+                   on_toggle=lambda b, mode=label.lower(): setattr(panel,"computer_mode",mode if b.active else "default"))
+
+        if label == "Bases":
+            Button(panel,(menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h),label,group="computer_menu",
+                   on_toggle=lambda b, mode=label.lower(): setattr(panel,"computer_mode",mode if b.active else "default"))
+
+        if label == "Intelligence":
+            Button(panel,(menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h),label,group="computer_menu",
+                   on_toggle=lambda b, mode=label.lower(): setattr(panel,"computer_mode",mode if b.active else "default"))
+
+        if label == "Reference Lib":
+            Button(panel,(menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h),label,group="computer_menu",
+                   on_toggle=lambda b, mode=label.lower(): setattr(panel,"computer_mode",mode if b.active else "default"))
+
+        if label == "Self-Destruct":
+            Button(panel,(menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h),label,group="computer_menu",
+                   on_toggle=lambda b, mode=label.lower(): setattr(panel,"computer_mode",mode if b.active else "default"))
+
+        if label == "Special Services":
+            Button(panel,(menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h),label,group="computer_menu",
+                   on_toggle=lambda b, mode=label.lower(): setattr(panel,"computer_mode",mode if b.active else "default"))
 
 def _build_data():
     panel = P["Data"]
@@ -665,54 +704,185 @@ def _draw_computer(state):
     panel = P["Computer Display"]
     options = panel.get("options")
     options.surf.fill(PANEL_BG)
-    for element in panel.elements:
-        if isinstance(element, Button) and element.group == "computer_menu":
-            element.active = element.label == state.computer_page
+    mode = panel.computer_mode
+
     screen = panel.get("screen")
     screen.surf.fill(BLACK)
-    if state.computer_page == "Self-Destruct":
-        _draw_self_destruct_screen(screen, state)
-        return
 
-    fit_text(screen.surf, "TACTICAL SYSTEM DATABASE", [4, 4, screen.rect.width - 8, 16],
-             WHITE, 10)
-    headers = ["ID", "Rx", "Ry", "Cls", "S", "Plt"]
-    classes = ["G", "M", "B", "K", "F", "A", "D", "O"]
-    contact_rows = []
-    for contact in state.tactical_contacts():
-        cls = {"planet": "M", "ship": "K", "base": "B", "mine": "N"}.get(contact["kind"], "G")
-        stat = "H" if contact.get("threat") else "N"
-        contact_rows.append([
-            contact["id"][:2], str(round(contact["x"])), str(round(contact["y"])),
-            cls, stat, "1" if contact["kind"] == "planet" else "0",
-        ])
-    for block in range(4):
-        x = 8 + block * 114
-        for i, head in enumerate(headers):
-            fit_text(screen.surf, head, [x + i * 18, 22, 17, 11], CYAN, 8)
-        pygame.draw.line(screen.surf, FRAME_DIM, (x, 35), (x + 104, 35), 1)
-        for row in range(15):
-            system_id = block * 15 + row + 1
-            y = 38 + row * 13
-            if block == 0 and row < len(contact_rows):
-                cells = contact_rows[row]
-            else:
-                cells = [
-                    f"{system_id:02d}", f"{(system_id * 7) % 50}",
-                    f"{(system_id * 11) % 50}", classes[system_id % len(classes)],
-                    "N" if system_id % 5 else "H", str((system_id * 3) % 4),
-                ]
-            for i, cell in enumerate(cells):
-                fg = RED if cell == "H" else GREEN
-                if i == 3:
-                    fg = MAGENTA if cell in ("B", "O") else YELLOW
-                fit_text(screen.surf, cell, [x + i * 18, y, 17, 11], fg, 8)
-    pygame.draw.rect(screen.surf, FRAME_DIM, (4, 18, screen.rect.width - 8, 222), 1)
-    fit_text(screen.surf,
-             f"Status: {state.alert_status}  RG {state.nav_region[0]},{state.nav_region[1]}  "
-             f"Energy {state.energy_pct}%  Contacts {len(state.tactical_contacts())}",
-             [8, 230, screen.rect.width - 16, 14], CYAN, 9, align="left")
+    if mode == "combat stats":
+        _draw_combat_stats(screen,state,"e")
+    if mode == "star systems":
+        _draw_star_systems(screen,state)
 
+    if mode == "self-destruct":
+        _draw_self_destruct_screen(screen,state)
+
+
+def _draw_combat_stats(screen, state,view):
+    surf = screen.surf
+    rect = screen.rect
+    if view == "e":
+        fit_text(surf, "COMBAT STATUS REPORT - Enemy", [4, 4, rect.width - 8, 20], WHITE, 14)
+
+        headers = [
+            ("OBJECT", 70),
+            ("REL POS", 50),
+            ("BNG", 35),
+            ("VEL", 35),
+            ("HDG", 35),
+            ("L", 20),
+            ("T", 20),
+            ("POWER", 70),
+            ("AX.E", 30),
+            ("MN.E", 30),
+            ("DAM", 30),
+            ("STATUS", 38),
+        ]
+
+        # Format:
+        # [object, relpos, bng, vel, hdg, L_flag, T_flag, power, ax.e, mn.e, dam, status]
+
+        base_rows = [
+            ["unknown", "26, -3", "95", "0.9", "211", 0, 1, "unknown", "unk", "unk", "unk", "HOSTILE"],
+            ["heavy cruiser", "-2, 1", "225", "0.9", "45", 0, 0, "3636 (72%)", "ok", "unk", "lgt", "HOSTILE"],
+            ["light cruiser", "9, -1", "225", "0.9", "90", 1, 0, "2724 (90%)", "ok", "unk", "med", "HOSTILE"],
+            ["unknown", "29, -31", "91", "0.9", "210", 1, 0, "unknown", "ok", "unk", "unk", "HOSTILE"],
+            ["destroyer", "29, -31", "91", "0.9", "210", 1, 0, "1757 (87%)", "ok", "unk", "unk", "HOSTILE"],
+            ["unknown", "31, 31", "91", "0.9", "210", 0, 1, "unknown", "ok", "unk", "unk", "HOSTILE"],
+        ]
+
+        rows = []
+        for r in base_rows:
+            L_flag = "x" if r[5] == 1 else ""
+            T_flag = "x" if r[6] == 1 else ""
+
+            row = [
+                r[0], r[1], r[2], r[3], r[4],
+                L_flag, T_flag,
+                r[7], r[8], r[9], r[10], r[11]
+            ]
+            rows.append(row)
+
+        start_x = 8
+        start_y = 32
+        x = start_x
+        for label, width in headers:
+            fit_text(surf, label, [x, start_y, width, 18], CYAN, 12)
+            x += width
+
+        pygame.draw.line(surf, FRAME_DIM, (start_x, start_y + 20), (rect.width - 8, start_y + 20), 1)
+
+        row_y = start_y + 24
+        for i, row in enumerate(rows):
+            x = start_x
+            bg = (25, 25, 25) if i % 2 else (0, 0, 0)
+            pygame.draw.rect(surf, bg, (start_x, row_y, rect.width - 16, 20))
+
+            for (label, width), cell in zip(headers, row):
+                fg = GREEN
+
+                if label == "DAM":
+                    if "med" in cell:
+                        fg = YELLOW
+                    elif "lgt" in cell:
+                        fg = CYAN
+
+                elif label == "STATUS" and "HOSTILE" in cell:
+                    fg = RED
+
+                elif label in ("L", "T") and cell == "x":
+                    fg = CYAN
+
+                fit_text(surf, cell, [x, row_y, width, 20], fg, 12)
+                x += width
+
+            row_y += 20
+
+        pygame.draw.rect(surf, FRAME_DIM, (4, 24, rect.width - 8, rect.height - 32), 1)
+
+    if view == "k":
+        fit_text(surf, "COMBAT STATUS REPORT - Krellan Forces",
+                 [4, 4, rect.width - 8, 20], WHITE, 14)
+
+        # --- Column headers (same widths as Enemy screen) ---
+        headers = [
+            ("OBJECT", 70),
+            ("REL POS", 50),
+            ("BNG", 35),
+            ("VEL", 35),
+            ("HDG", 35),
+            ("L", 20),
+            ("T", 20),
+            ("POWER", 70),
+            ("AX.E", 30),
+            ("MN.E", 30),
+            ("DAM", 30),
+            ("STATUS", 38),
+        ]
+
+        base_rows = [
+            ["Krellan BC", "12, -4", "045", "1.2", "090", 1, 0, "88%", "12", "8", "0", "HOSTILE"],
+            ["Krellan DD", "18, 10", "120", "1.4", "270", 0, 1, "72%", "10", "6", "5", "HOSTILE"],
+            ["Krellan FF", "5, -22", "200", "1.8", "315", 1, 0, "55%", "8", "4", "12", "HOSTILE"],
+            ["Krellan Scout", "30, 5", "010", "0.8", "040", 0, 1, "40%", "4", "2", "20", "HOSTILE"],
+            ["Mine Layer", "2, 2", "180", "0.0", "000", 1, 0, "100%", "0", "0", "0", "HOSTILE"],
+            ["Drone", "7, -1", "270", "0.4", "180", 0, 1, "20%", "1", "1", "80", "HOSTILE"],
+        ]
+
+        rows = []
+        for r in base_rows:
+            L_flag = "x" if r[5] == 1 else ""
+            T_flag = "x" if r[6] == 1 else ""
+
+            row = [
+                r[0], r[1], r[2], r[3], r[4],
+                L_flag, T_flag,
+                r[7], r[8], r[9], r[10], r[11]
+            ]
+            rows.append(row)
+
+            start_x = 8
+            start_y = 32
+            x = start_x
+            for label, width in headers:
+                fit_text(surf, label, [x, start_y, width, 18], CYAN, 12)
+                x += width
+
+            pygame.draw.line(surf, FRAME_DIM,
+                             (start_x, start_y + 20), (rect.width - 8, start_y + 20), 1)
+
+            # --- Draw rows ---
+            row_y = start_y + 24
+            for i, row in enumerate(rows):
+                x = start_x
+                bg = (25, 25, 25) if i % 2 else (0, 0, 0)
+                pygame.draw.rect(surf, bg, (start_x, row_y, rect.width - 16, 20))
+
+            for (label, width), cell in zip(headers, row):
+                fg = GREEN
+
+                # Damage color logic
+                if label == "DAM":
+                    dmg = int(cell) if cell.isdigit() else 0
+                    if dmg >= 50:
+                        fg = RED
+                    elif dmg >= 20:
+                        fg = YELLOW
+                    elif dmg >= 1:
+                        fg = CYAN
+
+                # Hostile status
+                elif label == "STATUS" and "HOSTILE" in cell:
+                    fg = RED
+
+                # L/T flags
+                elif label in ("L", "T") and cell == "x":
+                    fg = CYAN
+
+                fit_text(surf, cell, [x, row_y, width, 20], fg, 12)
+                x += width
+
+            row_y += 20
 
 def _draw_self_destruct_screen(screen, state):
     surf = screen.surf
@@ -755,6 +925,45 @@ def _draw_self_destruct_screen(screen, state):
              RED if state.self_destructed else (YELLOW if state.self_destruct_armed else CYAN),
              12, align="center")
 
+def _draw_star_systems(screen, state):
+    fit_text(screen.surf, "TACTICAL SYSTEM DATABASE", [4, 4, screen.rect.width - 8, 16],
+             WHITE, 10)
+    headers = ["ID", "Rx", "Ry", "Cls", "S", "Plt"]
+    classes = ["G", "M", "B", "K", "F", "A", "D", "O"]
+    contact_rows = []
+    for contact in state.tactical_contacts():
+        cls = {"planet": "M", "ship": "K", "base": "B", "mine": "N"}.get(contact["kind"], "G")
+        stat = "H" if contact.get("threat") else "N"
+        contact_rows.append([
+            contact["id"][:2], str(round(contact["x"])), str(round(contact["y"])),
+            cls, stat, "1" if contact["kind"] == "planet" else "0",
+        ])
+    for block in range(4):
+        x = 8 + block * 114
+        for i, head in enumerate(headers):
+            fit_text(screen.surf, head, [x + i * 18, 22, 17, 11], CYAN, 8)
+        pygame.draw.line(screen.surf, FRAME_DIM, (x, 35), (x + 104, 35), 1)
+        for row in range(15):
+            system_id = block * 15 + row + 1
+            y = 38 + row * 13
+            if block == 0 and row < len(contact_rows):
+                cells = contact_rows[row]
+            else:
+                cells = [
+                    f"{system_id:02d}", f"{(system_id * 7) % 50}",
+                    f"{(system_id * 11) % 50}", classes[system_id % len(classes)],
+                    "N" if system_id % 5 else "H", str((system_id * 3) % 4),
+                ]
+            for i, cell in enumerate(cells):
+                fg = RED if cell == "H" else GREEN
+                if i == 3:
+                    fg = MAGENTA if cell in ("B", "O") else YELLOW
+                fit_text(screen.surf, cell, [x + i * 18, y, 17, 11], fg, 8)
+    pygame.draw.rect(screen.surf, FRAME_DIM, (4, 18, screen.rect.width - 8, 222), 1)
+    fit_text(screen.surf,
+             f"Status: {state.alert_status}  RG {state.nav_region[0]},{state.nav_region[1]}  "
+             f"Energy {state.energy_pct}%  Contacts {len(state.tactical_contacts())}",
+             [8, 230, screen.rect.width - 16, 14], CYAN, 9, align="left")
 
 def _draw_data(state):
     disp = P["Data"].get("stores")
