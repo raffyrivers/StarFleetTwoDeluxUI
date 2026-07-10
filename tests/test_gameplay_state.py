@@ -57,6 +57,25 @@ class GameplayStateTests(unittest.TestCase):
         state.tick(0.1)
         self.assertEqual(state.nav_mode, "In Orbit")
 
+    def test_science_lrs_and_srs_have_distinct_ranges(self):
+        state = ShipState()
+        state.ecm_enabled = False
+        state.set_science_scope("LRS")
+        lrs_ids = {contact["id"] for contact in state.science_contacts()}
+        state.set_science_scope("SRS")
+        srs_ids = {contact["id"] for contact in state.science_contacts()}
+        self.assertGreaterEqual(len(lrs_ids), len(srs_ids))
+        self.assertNotEqual(state.science_range(), 18)
+        self.assertEqual(state.science_range(), 6)
+
+    def test_damaged_selected_science_sensor_limits_contacts(self):
+        state = ShipState()
+        state.set_science_scope("LRS")
+        self.assertGreater(len(state.science_contacts()), 0)
+        state.damage.system_health["LRS"] = 0
+        self.assertEqual(state.science_range(), 0)
+        self.assertEqual(state.science_contacts(), [])
+
     def test_aas_and_ecm_follow_manual_sensor_rules(self):
         state = ShipState()
         self.assertTrue(any(c["threat"] for c in state.scanner_contacts()))

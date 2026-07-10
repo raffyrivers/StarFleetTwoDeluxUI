@@ -529,7 +529,13 @@ class ShipState:
 
     def set_science_scope(self, scope):
         self.science_scope = "SRS" if scope == "SRS" else "LRS"
-        self.add_message("Science", f"{self.science_scope} selected")
+        if self.damage.system_health.get(self.science_scope, 100) <= 0:
+            self.add_message("Science", f"{self.science_scope} inoperative")
+        else:
+            self.add_message("Science", f"{self.science_scope} selected")
+
+    def toggle_science_scope(self):
+        self.set_science_scope("SRS" if self.science_scope == "LRS" else "LRS")
 
     def set_science_page(self, page):
         self.science_page = "Planet Data" if page == "Planet Data" else "Dept Q"
@@ -707,6 +713,31 @@ class ShipState:
             d = self._distance_to(contact)
             if d <= 18:
                 contacts.append(contact.reading(d))
+        return contacts
+
+    def science_range(self):
+        base_range = 6 if self.science_scope == "SRS" else 18
+        health = self.damage.system_health.get(self.science_scope, 100)
+        if health <= 0:
+            return 0
+        if health < 50:
+            return max(1, base_range // 2)
+        return base_range
+
+    def science_contacts(self):
+        if self.ecm_enabled:
+            return []
+        contacts = []
+        range_limit = self.science_range()
+        if range_limit <= 0:
+            return []
+        for contact in self.contacts:
+            if contact.status == "DESTROYED":
+                continue
+            d = self._distance_to(contact)
+            if d <= range_limit:
+                contacts.append(contact.reading(d))
+        contacts.sort(key=lambda item: item["distance"])
         return contacts
 
     def tactical_contacts(self):

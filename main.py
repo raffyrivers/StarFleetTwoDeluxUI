@@ -192,8 +192,9 @@ class Cockpit:
             button.active = False
 
     def _handle_science_button(self, button):
-        if button.label == "SRS":
-            self.state.set_science_scope("SRS" if button.active else "LRS")
+        if button.label in ("SRS", "LRS"):
+            self.state.set_science_scope(button.label)
+            button.active = False
         elif button.label in ("Dept Q", "Planet Data"):
             self.state.set_science_page(button.label)
         elif button.label == "Board":
@@ -210,8 +211,9 @@ class Cockpit:
     def _handle_combat_button(self, button):
         if button.label in ("BCS", "SCS"):
             self.state.set_combat_alignment(button.label)
-        elif button.label == "SRS":
-            self.state.set_science_scope("SRS" if button.active else "LRS")
+        elif button.label in ("SRS", "LRS"):
+            self.state.set_science_scope(button.label)
+            button.active = False
         elif button.label in ("Dept Q", "Planet Data"):
             self.state.set_science_page(button.label)
         elif button.label in self.state.weapons:

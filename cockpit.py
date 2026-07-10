@@ -137,6 +137,7 @@ def _build_primary():
 
 def _build_science():
     panel = P["Science Console"]
+    panel.tab_label = "Target Data"
     Button(panel, (132, 26, 50, 18), "Board", key=pygame.K_RSHIFT, text_size=10)
 
 
@@ -249,7 +250,7 @@ def _build_communication():
 def _build_combat():
     panel = P["Combat Console"]
     Display(panel, "grid", (470, 470), (5, 25))
-    CircleDisplay(panel, "combat science scope", (493, 410), 45)
+    CircleDisplay(panel, "combat science scope", (493, 414), 45)
     Text(panel, (5, 6), "Combat Information Display", "cyan", 11)
     Text(panel, (515, 6), "Alignment:", BLACK, 11)
     Button(panel, (586, 3, 38, 20), "BCS", group="combat_align", active=True, text_size=11)
@@ -278,10 +279,10 @@ def _build_combat():
     for i, name in enumerate(("Ph", "T1", "T2", "Cont")):
         Button(panel, (493 + i * 39, 352, 37, 22), name, group="weapon_condition",
                active=i == 0, text_size=10)
-    Button(panel, (612, 388, 34, 18), "SRS", text_size=10)
-    Button(panel, (586, 418, 58, 16), "Dept Q", group="science_page",
+    Button(panel, (612, 402, 34, 18), "SRS", text_size=10)
+    Button(panel, (586, 430, 58, 16), "Dept Q", group="science_page",
            active=True, text_size=9)
-    Button(panel, (586, 438, 58, 16), "Planet Data", group="science_page", text_size=8)
+    Button(panel, (586, 450, 58, 16), "Planet Data", group="science_page", text_size=8)
 
 
 def _build_strategic():
@@ -460,9 +461,9 @@ def _draw_science_scope(panel, state, scope_label="scope", compact=False):
         if abs(ty - cy) < radius:
             pygame.draw.line(scope.surf, WHITE, (cx - 9, ty), (cx + 9, ty), 2)
 
-    range_units = 8 if state.science_scope == "SRS" else 18
+    range_units = state.science_range()
     scale = (radius - 8) / range_units
-    contacts = state.scanner_contacts()
+    contacts = state.science_contacts()
     if state.science_page == "Planet Data":
         contacts = [contact for contact in contacts if contact["kind"] == "planet"]
     for contact in contacts:
@@ -488,8 +489,8 @@ def _draw_science_scope(panel, state, scope_label="scope", compact=False):
     pygame.draw.circle(scope.surf, WHITE, (cx, cy), radius, 2)
 
     if compact:
-        fit_text(panel.surf, state.science_scope, [492, 388, 40, 14], BLACK, 10, align="left")
-        page_rect = pygame.Rect(536, 388, 72, 14)
+        fit_text(panel.surf, state.science_scope, [492, 400, 40, 12], BLACK, 9, align="left")
+        return
     else:
         fit_text(panel.surf, state.science_scope, [10, 20, 52, 16], BLACK, 16, align="left")
         page_rect = pygame.Rect(68, 20, 76, 16)
@@ -1021,8 +1022,9 @@ def _sync_combat_buttons(panel, state):
                 element.active = element.label == active_by_group[element.group]
             elif element.label == "ECM":
                 element.active = state.ecm_enabled
-            elif element.label == "SRS":
-                element.active = state.science_scope == "SRS"
+            elif element.label in ("SRS", "LRS"):
+                element.label = "LRS" if state.science_scope == "SRS" else "SRS"
+                element.active = False
             elif element.group == "science_page":
                 element.active = element.label == state.science_page
 
@@ -1105,6 +1107,8 @@ def _draw_combat_science(panel, state):
     box = pygame.Rect(485, 384, 165, 122)
     pygame.draw.rect(panel.surf, PANEL_BG, box)
     pygame.draw.rect(panel.surf, GREY, box, 2)
+    fit_text(panel.surf, "Science Console", [box.x + 6, box.y + 3, 110, 12],
+             BLACK, 9, align="left")
     _draw_science_scope(panel, state, "combat science scope", compact=True)
 
 
