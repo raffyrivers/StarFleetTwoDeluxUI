@@ -18,6 +18,7 @@ Controls:
   F2-F5          set ship damage state
   Ctrl+1-4       fallback damage keys for media-key keyboards
   d f g h j      combat overlays (menu, grid, heading, target, line)
+  k              toggle Computer Display combat stats view
   m , . /        shield modes
   Left / Right   select weapon
   9 0 -          communication feed (messages, reports, combined)
@@ -150,6 +151,9 @@ class Cockpit:
             button.active = False
 
     def display_click(self, point):
+        if cockpit.reference_library_click(point):
+            return True
+
         nav_panel = cockpit.P["Navigation"]
         nav_readout = nav_panel.get("nav readout")
         nav_rect = pygame.Rect(nav_panel.x + nav_readout.pos[0],
@@ -206,6 +210,8 @@ class Cockpit:
             if button.label == "Self-Destruct":
                 self.state.activate_self_destruct()
             else:
+                if button.label == "Reference Lib":
+                    cockpit.P["Computer Display"].reference_topic = None
                 self.state.set_computer_page(button.label)
 
     def _handle_combat_button(self, button):
@@ -280,10 +286,12 @@ class Cockpit:
             st.change_space_velocity(-1)
         elif key == pygame.K_r:
             st.plot_course_to_target()
-        #to switch to krellan data in computer combat
-        # elif key == pygame.K_k:
-
-
+        elif key == pygame.K_k:
+            computer = cockpit.P["Computer Display"]
+            if computer.computer_mode == "combat stats":
+                computer.computer_combat_view = (
+                    "k" if getattr(computer, "computer_combat_view", "e") == "e" else "e"
+                )
         elif key == pygame.K_LEFTBRACKET:
             st.set_nav_course(st.set_course - 15)
         elif key == pygame.K_RIGHTBRACKET:

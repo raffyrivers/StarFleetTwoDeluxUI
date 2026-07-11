@@ -208,6 +208,8 @@ class _Indicator:
 def _build_computer():
     panel = P["Computer Display"]
     panel.computer_mode = "default"
+    panel.reference_topic = None
+    panel.computer_combat_view = "e"
     menu = ["Combat Stats", "Information", "Landing Party", "Planets", "Star Systems",
             "Bases", "Intelligence", "Reference Lib", "Self-Destruct", "Special Services"]
     Display(panel, "options", (90, 250), (5, 5))
@@ -710,9 +712,12 @@ def _draw_computer(state):
     screen.surf.fill(BLACK)
 
     if mode == "combat stats":
-        _draw_combat_stats(screen,state,"e")
+        _draw_combat_stats(screen, state, getattr(panel, "computer_combat_view", "e"))
     if mode == "star systems":
         _draw_star_systems(screen,state)
+
+    if mode == "reference lib":
+        _draw_reference_library(screen, state)
 
     if mode == "self-destruct":
         _draw_self_destruct_screen(screen,state)
@@ -800,7 +805,7 @@ def _draw_combat_stats(screen, state,view):
 
         pygame.draw.rect(surf, FRAME_DIM, (4, 24, rect.width - 8, rect.height - 32), 1)
 
-    if view == "k":
+    elif view == "k":
         fit_text(surf, "COMBAT STATUS REPORT - Krellan Forces",
                  [4, 4, rect.width - 8, 20], WHITE, 14)
 
@@ -821,12 +826,12 @@ def _draw_combat_stats(screen, state,view):
         ]
 
         base_rows = [
-            ["Krellan BC", "12, -4", "045", "1.2", "090", 1, 0, "88%", "12", "8", "0", "HOSTILE"],
-            ["Krellan DD", "18, 10", "120", "1.4", "270", 0, 1, "72%", "10", "6", "5", "HOSTILE"],
-            ["Krellan FF", "5, -22", "200", "1.8", "315", 1, 0, "55%", "8", "4", "12", "HOSTILE"],
-            ["Krellan Scout", "30, 5", "010", "0.8", "040", 0, 1, "40%", "4", "2", "20", "HOSTILE"],
-            ["Mine Layer", "2, 2", "180", "0.0", "000", 1, 0, "100%", "0", "0", "0", "HOSTILE"],
-            ["Drone", "7, -1", "270", "0.4", "180", 0, 1, "20%", "1", "1", "80", "HOSTILE"],
+            ["Krellan BC", "12, -4", "045", "1.2", "090", 1, 0, "88%", "12", "8", "0", "READY"],
+            ["Krellan DD", "18, 10", "120", "1.4", "270", 0, 1, "72%", "10", "6", "5", "ESCORT"],
+            ["Krellan FF", "5, -22", "200", "1.8", "315", 1, 0, "55%", "8", "4", "12", "PATROL"],
+            ["Krellan Scout", "30, 5", "010", "0.8", "040", 0, 1, "40%", "4", "2", "20", "SCOUT"],
+            ["Mine Layer", "2, 2", "180", "0.0", "000", 1, 0, "100%", "0", "0", "0", "READY"],
+            ["Drone", "7, -1", "270", "0.4", "180", 0, 1, "20%", "1", "1", "80", "READY"],
         ]
 
         rows = []
@@ -841,22 +846,21 @@ def _draw_combat_stats(screen, state,view):
             ]
             rows.append(row)
 
-            start_x = 8
-            start_y = 32
+        start_x = 8
+        start_y = 32
+        x = start_x
+        for label, width in headers:
+            fit_text(surf, label, [x, start_y, width, 18], CYAN, 12)
+            x += width
+
+        pygame.draw.line(surf, FRAME_DIM,
+                         (start_x, start_y + 20), (rect.width - 8, start_y + 20), 1)
+
+        row_y = start_y + 24
+        for i, row in enumerate(rows):
             x = start_x
-            for label, width in headers:
-                fit_text(surf, label, [x, start_y, width, 18], CYAN, 12)
-                x += width
-
-            pygame.draw.line(surf, FRAME_DIM,
-                             (start_x, start_y + 20), (rect.width - 8, start_y + 20), 1)
-
-            # --- Draw rows ---
-            row_y = start_y + 24
-            for i, row in enumerate(rows):
-                x = start_x
-                bg = (25, 25, 25) if i % 2 else (0, 0, 0)
-                pygame.draw.rect(surf, bg, (start_x, row_y, rect.width - 16, 20))
+            bg = (25, 25, 25) if i % 2 else (0, 0, 0)
+            pygame.draw.rect(surf, bg, (start_x, row_y, rect.width - 16, 20))
 
             for (label, width), cell in zip(headers, row):
                 fg = GREEN
@@ -883,6 +887,8 @@ def _draw_combat_stats(screen, state,view):
                 x += width
 
             row_y += 20
+
+        pygame.draw.rect(surf, FRAME_DIM, (4, 24, rect.width - 8, rect.height - 32), 1)
 
 def _draw_self_destruct_screen(screen, state):
     surf = screen.surf
@@ -964,6 +970,163 @@ def _draw_star_systems(screen, state):
              f"Status: {state.alert_status}  RG {state.nav_region[0]},{state.nav_region[1]}  "
              f"Energy {state.energy_pct}%  Contacts {len(state.tactical_contacts())}",
              [8, 230, screen.rect.width - 16, 14], CYAN, 9, align="left")
+
+
+def _draw_reference_library(screen, state):
+    surf = screen.surf
+    rect = screen.rect
+    pygame.draw.rect(surf, FRAME_DIM, (4, 4, rect.width - 8, rect.height - 8), 1)
+    topic = getattr(P["Computer Display"], "reference_topic", None)
+    if topic:
+        _draw_reference_topic(screen, state, topic)
+    else:
+        _draw_reference_index(screen)
+
+
+REFERENCE_TOPICS = {
+    "Navigation": "Course, maps, movement, rest",
+    "Sensors": "LRS, SRS, ECM limits",
+    "Combat": "Weapons, shields, target data",
+    "Boarding": "Capture rules, deck status",
+    "Alerts": "Warnings and auto alerts",
+    "Controls": "Shortcuts and panel toggles",
+}
+
+
+def _reference_button_rects():
+    rects = []
+    labels = list(REFERENCE_TOPICS.keys())
+    for i, label in enumerate(labels):
+        col = i % 2
+        row = i // 2
+        rects.append((label, pygame.Rect(16 + col * 228, 50 + row * 51, 212, 40)))
+    return rects
+
+
+def _draw_reference_button(surf, rect, title, subtitle=None, active=False):
+    pygame.draw.rect(surf, GREEN if active else BUTTON_FACE, rect)
+    pygame.draw.line(surf, (235, 235, 235), rect.topleft, rect.topright, 2)
+    pygame.draw.line(surf, (235, 235, 235), rect.topleft, rect.bottomleft, 2)
+    pygame.draw.line(surf, FRAME_DIM, rect.bottomleft, rect.bottomright, 2)
+    pygame.draw.line(surf, FRAME_DIM, rect.topright, rect.bottomright, 2)
+    fit_text(surf, title, [rect.x + 8, rect.y + 4, rect.w - 16, 16], BLACK, 13, align="left")
+    if subtitle:
+        fit_text(surf, subtitle, [rect.x + 8, rect.y + 23, rect.w - 16, 13], BLACK, 10, align="left")
+
+
+def _draw_reference_index(screen):
+    surf = screen.surf
+    rect = screen.rect
+    fit_text(surf, "REFERENCE LIBRARY", [12, 10, rect.width - 24, 20], WHITE, 14, align="center")
+    fit_text(surf, "Select a topic", [12, 30, rect.width - 24, 14], CYAN, 11, align="center")
+    for label, button_rect in _reference_button_rects():
+        _draw_reference_button(surf, button_rect, label, REFERENCE_TOPICS[label])
+    fit_text(surf, "Live ship values appear inside each topic.", [12, rect.height - 24, rect.width - 24, 14],
+             CYAN, 10, align="center")
+
+
+def _reference_topic_data(state):
+    contacts = state.scanner_contacts()
+    hostile = any(c.get("threat") for c in contacts)
+    target = state.selected_target if state.contacts else None
+    target_name = target.name if target else "None"
+    weapon_readiness = {bank.label: ("READY" if bank.ready else "RELOADING") for bank in state.weapon_banks}
+    lrs_online = state.damage.system_health.get("LRS", 100) > 0 and not state.ecm_enabled
+    srs_online = state.damage.system_health.get("SRS", 100) > 0
+    return {
+        "Navigation": [
+            ("Region", f"{state.nav_region[0]}, {state.nav_region[1]}", GREEN),
+            ("System Pos", f"{state.system_x:.0f}, {state.system_y:.0f}", GREEN),
+            ("Course", f"{state.set_course:.0f} deg", GREEN),
+            ("Mode", state.nav_mode, CYAN),
+            ("Notes", "Regional map moves by hyperspace; system map uses normal space.", WHITE),
+            ("Rest", "Rest advances mission time only while the ship remains stationary.", WHITE),
+        ],
+        "Sensors": [
+            ("LRS", "ONLINE 40 x 40" if lrs_online else "OFFLINE", GREEN if lrs_online else RED),
+            ("SRS", "ONLINE 11 x 11" if srs_online else "OFFLINE", GREEN if srs_online else RED),
+            ("ECM", "ACTIVE" if state.ecm_enabled else "OFF", RED if state.ecm_enabled else GREEN),
+            ("Contacts", str(len(contacts)), RED if hostile else GREEN),
+            ("LRS Use", "Long range, ship-centered. Contacts slide as you turn and move.", WHITE),
+            ("SRS Use", "Close tactical view for weapons, shield facing and boarding setup.", WHITE),
+        ],
+        "Combat": [
+            ("Target", target_name, CYAN),
+            ("Weapon", state.selected_weapon, GREEN),
+            ("Phaser", weapon_readiness.get("Phaser", "--"), GREEN),
+            ("Trp1 / Trp2", f"{weapon_readiness.get('Trp1', '--')} / {weapon_readiness.get('Trp2', '--')}", GREEN),
+            ("Shields", "UP" if state.shields_up else "DOWN", GREEN if state.shields_up else RED),
+            ("Rule", "Target data replaces ship data under red alert or manual data toggle.", WHITE),
+        ],
+        "Boarding": [
+            ("Target", target_name, CYAN),
+            ("Shock Troops", str(state.shock_troops), GREEN),
+            ("Space Marines", str(state.marines), GREEN),
+            ("Target Shields", "UP" if target and target.shields_up else "DOWN", RED if target and target.shields_up else GREEN),
+            ("Requirement", "Enemy ship or base must have shields down before boarding.", WHITE),
+            ("Display", "Boarding mode replaces prisoner data with deck plan and troop status.", WHITE),
+        ],
+        "Alerts": [
+            ("Alert", state.alert_status, RED if state.alert_status == "Red" else GREEN),
+            ("AAS", "ENABLED" if state.aas_enabled else "OFF", GREEN if state.aas_enabled else YELLOW),
+            ("Power", f"{state.energy_pct}%", RED if state.energy_pct < 25 else GREEN),
+            ("Hull", f"{state.hull_pct}%", RED if state.hull_pct < 40 else GREEN),
+            ("Red Alert", "Hostile ship/base detection raises combat readiness.", WHITE),
+            ("Warnings", "Lights stay active until the underlying condition is corrected.", WHITE),
+        ],
+        "Controls": [
+            ("Alt-D", "Toggle ship data and target data.", GREEN),
+            ("Alt-R", "Toggle rest mode while stationary.", GREEN),
+            ("Alt-S", "Show system map.", GREEN),
+            ("Alt-Q", "Open Department Q from primary displays.", GREEN),
+            ("Mouse", "Click cockpit buttons to switch modes and issue commands.", WHITE),
+            ("NotePad", "Opens the command notepad without changing ship state.", WHITE),
+        ],
+    }
+
+
+def _draw_reference_topic(screen, state, topic):
+    surf = screen.surf
+    rect = screen.rect
+    _draw_reference_button(surf, pygame.Rect(12, 12, 92, 24), "Previous")
+    fit_text(surf, topic.upper(), [112, 14, rect.width - 124, 22], WHITE, 15, align="left")
+    pygame.draw.line(surf, FRAME_DIM, (12, 44), (rect.width - 12, 44), 1)
+    rows = _reference_topic_data(state).get(topic, [])
+    y = 58
+    for label, value, fg in rows:
+        label_box = pygame.Rect(18, y, 120, 22)
+        value_box = pygame.Rect(146, y, rect.width - 164, 22)
+        fit_text(surf, label, label_box, CYAN, 12, align="left")
+        if label in ("Notes", "LRS Use", "SRS Use", "Rule", "Requirement", "Display",
+                     "Red Alert", "Warnings", "Mouse", "NotePad"):
+            fit_text(surf, value, value_box, fg, 11, align="left")
+        else:
+            pygame.draw.rect(surf, BLACK, value_box)
+            pygame.draw.rect(surf, FRAME_DIM, value_box, 1)
+            fit_text(surf, value, value_box.inflate(-8, -2), fg, 12, align="left")
+        y += 29
+
+
+def reference_library_click(point):
+    panel = P["Computer Display"]
+    if panel.computer_mode != "reference lib":
+        return False
+    screen = panel.get("screen")
+    screen_rect = pygame.Rect(panel.x + screen.pos[0], panel.y + screen.pos[1],
+                              screen.size[0], screen.size[1])
+    if not screen_rect.collidepoint(point):
+        return False
+    local = (point[0] - screen_rect.x, point[1] - screen_rect.y)
+    if getattr(panel, "reference_topic", None):
+        if pygame.Rect(12, 12, 92, 24).collidepoint(local):
+            panel.reference_topic = None
+            return True
+        return False
+    for label, rect in _reference_button_rects():
+        if rect.collidepoint(local):
+            panel.reference_topic = label
+            return True
+    return False
 
 def _draw_data(state):
     disp = P["Data"].get("stores")
