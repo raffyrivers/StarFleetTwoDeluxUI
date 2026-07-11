@@ -711,6 +711,9 @@ def _draw_computer(state):
     screen = panel.get("screen")
     screen.surf.fill(BLACK)
 
+    if mode == "default":
+        _draw_computer_landing(screen, state)
+
     if mode == "combat stats":
         _draw_combat_stats(screen, state, getattr(panel, "computer_combat_view", "e"))
     if mode == "star systems":
@@ -721,6 +724,60 @@ def _draw_computer(state):
 
     if mode == "self-destruct":
         _draw_self_destruct_screen(screen,state)
+
+
+def _draw_computer_landing(screen, state):
+    surf = screen.surf
+    rect = screen.rect
+    pygame.draw.rect(surf, FRAME_DIM, (4, 4, rect.width - 8, rect.height - 8), 1)
+    fit_text(surf, "SHIP INFORMATION SYSTEM", [10, 8, rect.width - 20, 20],
+             WHITE, 14, align="center")
+    fit_text(surf, "KRELLAN BATTLECRUISER COMPUTER", [10, 29, rect.width - 20, 14],
+             CYAN, 10, align="center")
+
+    status_rows = [
+        ("Alert", state.alert_status, RED if state.alert_status == "Red" else GREEN),
+        ("Mission", f"{state.mission_elapsed_days:.2f} / {state.time_left_days:.2f} days", GREEN),
+        ("Region", f"{state.nav_region[0]}, {state.nav_region[1]}", GREEN),
+        ("System", f"{state.system_x:.0f}, {state.system_y:.0f}", GREEN),
+        ("Power", f"{state.energy_pct}%", RED if state.energy_pct < 25 else GREEN),
+        ("Hull", f"{state.hull_pct}%", RED if state.hull_pct < 40 else GREEN),
+    ]
+    box_specs = [
+        ("SHIP", status_rows[:3]),
+        ("READINESS", status_rows[3:]),
+    ]
+    for col, (title, rows) in enumerate(box_specs):
+        box = pygame.Rect(18 + col * 224, 56, 204, 82)
+        pygame.draw.rect(surf, (8, 8, 8), box)
+        pygame.draw.rect(surf, FRAME_DIM, box, 1)
+        fit_text(surf, title, [box.x + 8, box.y + 6, box.w - 16, 14], CYAN, 10, align="left")
+        for i, (label, value, fg) in enumerate(rows):
+            y = box.y + 26 + i * 17
+            fit_text(surf, label, [box.x + 10, y, 70, 14], CYAN, 10, align="left")
+            fit_text(surf, value, [box.x + 82, y, box.w - 92, 14], fg, 10, align="left")
+
+    modules = [
+        ("Combat Stats", "tactical reports"),
+        ("Information", "ship records"),
+        ("Landing Party", "troop status"),
+        ("Planets", "survey files"),
+        ("Star Systems", "regional database"),
+        ("Bases", "installation records"),
+        ("Intelligence", "enemy data"),
+        ("Reference Lib", "manual index"),
+    ]
+    fit_text(surf, "DATABASE CATALOG", [18, 150, rect.width - 36, 15], WHITE, 11, align="left")
+    for i, (name, detail) in enumerate(modules):
+        col = i % 2
+        row = i // 2
+        x = 18 + col * 224
+        y = 171 + row * 16
+        fit_text(surf, name, [x, y, 94, 13], GREEN, 9, align="left")
+        fit_text(surf, detail, [x + 100, y, 112, 13], CYAN, 8, align="left")
+
+    footer = f"Contacts {len(state.scanner_contacts())}   Torpedoes {state.torpedoes}   Prisoners {state.prisoners}"
+    fit_text(surf, footer, [18, rect.height - 19, rect.width - 36, 13], YELLOW, 9, align="center")
 
 
 def _draw_combat_stats(screen, state,view):
