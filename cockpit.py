@@ -1391,37 +1391,40 @@ def _draw_combat(state):
     cx, cy = grid.rect.center
     pygame.draw.line(grid.surf, WHITE, (10, cy), (grid.rect.width - 10, cy), 2)
     pygame.draw.line(grid.surf, WHITE, (cx, 10), (cx, grid.rect.height - 10), 2)
-    for step in range(-8, 9):
-        gx = cx + step * 25
-        gy = cy + step * 25
-        if 0 < gx < grid.rect.width:
-            pygame.draw.line(grid.surf, WHITE, (gx, cy - 8), (gx, cy + 8), 1)
-        if 0 < gy < grid.rect.height:
-            pygame.draw.line(grid.surf, WHITE, (cx - 8, gy), (cx + 8, gy), 1)
 
-    overlay = pygame.Surface(grid.size, pygame.SRCALPHA)
-    for gx in range(18, grid.rect.width, 22):
-        for gy in range(18, grid.rect.height, 22):
-            dot = (95, 120, 235, 100) if abs(gx - cx) + abs(gy - cy) > 130 else (210, 120, 55, 120)
-            pygame.draw.circle(overlay, dot, (gx, gy), 2)
-    pygame.draw.circle(overlay, (90, 110, 230, 150), (cx, cy), 165, 2)
-    pygame.draw.circle(overlay, (255, 140, 80, 150), (cx, cy), 105, 2)
-    grid.surf.blit(overlay, (0, 0))
-    for deg in range(0, 360, 15):
-        if deg % 30 == 0:
-            rad = math.radians(deg - 90)
-            tx = cx + int(178 * math.cos(rad))
-            ty = cy + int(178 * math.sin(rad))
-            text_line(grid.surf, str(deg), (tx, ty), WHITE, 10, align="center")
+    if state.combat_overlay("Grid"):
+        for step in range(-8, 9):
+            gx = cx + step * 25
+            gy = cy + step * 25
+            if 0 < gx < grid.rect.width:
+                pygame.draw.line(grid.surf, WHITE, (gx, cy - 8), (gx, cy + 8), 1)
+            if 0 < gy < grid.rect.height:
+                pygame.draw.line(grid.surf, WHITE, (cx - 8, gy), (cx + 8, gy), 1)
+
+        overlay = pygame.Surface(grid.size, pygame.SRCALPHA)
+        for gx in range(18, grid.rect.width, 22):
+            for gy in range(18, grid.rect.height, 22):
+                dot = (95, 120, 235, 100) if abs(gx - cx) + abs(gy - cy) > 130 else (210, 120, 55, 120)
+                pygame.draw.circle(overlay, dot, (gx, gy), 2)
+        pygame.draw.circle(overlay, (90, 110, 230, 150), (cx, cy), 165, 2)
+        pygame.draw.circle(overlay, (255, 140, 80, 150), (cx, cy), 105, 2)
+        grid.surf.blit(overlay, (0, 0))
+
+    if state.combat_overlay("Head"):
+        for deg in range(0, 360, 15):
+            if deg % 30 == 0:
+                rad = math.radians(deg - 90)
+                tx = cx + int(178 * math.cos(rad))
+                ty = cy + int(178 * math.sin(rad))
+                text_line(grid.surf, str(deg), (tx, ty), WHITE, 10, align="center")
+        heading_rad = math.radians(state.actual_heading - 90)
+        pygame.draw.line(grid.surf, YELLOW, (cx, cy),
+                         (cx + int(48 * math.cos(heading_rad)),
+                          cy + int(48 * math.sin(heading_rad))), 1)
+
+    target_point = None
     for contact in state.tactical_contacts():
-        dx = contact["x"] - state.system_x
-        dy = contact["y"] - state.system_y
-        if state.combat_alignment == "BCS":
-            angle = math.radians(-state.actual_heading)
-            dx, dy = (dx * math.cos(angle) - dy * math.sin(angle),
-                      dx * math.sin(angle) + dy * math.cos(angle))
-        px = max(18, min(grid.rect.width - 18, cx + int(dx * 15)))
-        py = max(18, min(grid.rect.height - 18, cy + int(dy * 15)))
+        px, py = _combat_contact_point(grid, state, contact)
         selected = contact["id"] == state.selected_target["id"]
         col = RED if contact.get("threat") else (GREEN if contact["kind"] == "base" else CYAN)
         shape = [(px, py - 9), (px + 9, py + 7), (px - 9, py + 7)]
@@ -1430,7 +1433,25 @@ def _draw_combat(state):
         else:
             pygame.draw.polygon(grid.surf, col, shape)
         if selected:
+            target_point = (px, py)
+
+        if selected and state.combat_overlay("Target"):
             pygame.draw.rect(grid.surf, MAGENTA, (px - 12, py - 12, 24, 24), 1)
+            fit_text(grid.surf, contact["id"], [px + 14, py - 9, 64, 14],
+                     YELLOW if contact.get("threat") else GREEN, 9, align="left")
+
+    if state.combat_overlay("Line") and target_point:
+        pygame.draw.line(grid.surf, MAGENTA, (cx, cy), target_point, 1)
+        solution = state.target_solution()
+        label = f"{solution['bearing']}  {solution['rpos']}"
+        mid = ((cx + target_point[0]) // 2 + 6, (cy + target_point[1]) // 2 - 10)
+        fit_text(grid.surf, label, [mid[0], mid[1], 110, 13], MAGENTA, 9, align="left")
+
+    if state.combat_overlay("Target"):
+        _draw_combat_target_overlay(grid.surf, state)
+
+    if state.combat_overlay("Menu"):
+        _draw_combat_menu_overlay(grid.surf, state)
 
     grid.surf.blit(pygame.transform.smoothscale(asset("combcShip.png"), (34, 34)),
                    (cx - 17, cy - 17))
@@ -1460,6 +1481,53 @@ def _sync_combat_buttons(panel, state):
                 element.active = False
             elif element.group == "science_page":
                 element.active = element.label == state.science_page
+            elif element.label in state.combat_overlays:
+                element.active = state.combat_overlay(element.label)
+
+
+def _combat_contact_point(grid, state, contact):
+    cx, cy = grid.rect.center
+    dx = contact["x"] - state.system_x
+    dy = contact["y"] - state.system_y
+    if state.combat_alignment == "BCS":
+        angle = math.radians(-state.actual_heading)
+        dx, dy = (dx * math.cos(angle) - dy * math.sin(angle),
+                  dx * math.sin(angle) + dy * math.cos(angle))
+    px = max(18, min(grid.rect.width - 18, cx + int(dx * 15)))
+    py = max(18, min(grid.rect.height - 18, cy + int(dy * 15)))
+    return px, py
+
+
+def _draw_combat_target_overlay(surface, state):
+    solution = state.target_solution()
+    box = pygame.Rect(8, 8, 128, 62)
+    pygame.draw.rect(surface, (0, 0, 0), box)
+    pygame.draw.rect(surface, MAGENTA, box, 1)
+    fit_text(surface, "TARGET", [box.x + 6, box.y + 4, box.w - 12, 13], CYAN, 9, align="left")
+    rows = [
+        state.selected_target["name"][:18],
+        f"BRG {solution['bearing']}  VEL {solution['velocity']}",
+        f"HULL {solution['hull']}  SHD {solution['shields']}",
+    ]
+    for i, row in enumerate(rows):
+        fit_text(surface, row, [box.x + 6, box.y + 19 + i * 13, box.w - 12, 12],
+                 YELLOW if i == 0 else GREEN, 8, align="left")
+
+
+def _draw_combat_menu_overlay(surface, state):
+    box = pygame.Rect(surface.get_width() - 146, 8, 136, 78)
+    pygame.draw.rect(surface, (0, 0, 0), box)
+    pygame.draw.rect(surface, CYAN, box, 1)
+    fit_text(surface, "TACTICAL MENU", [box.x + 6, box.y + 4, box.w - 12, 13], CYAN, 9, align="left")
+    rows = [
+        f"ALIGN {state.combat_alignment}",
+        f"WEAP  {state.selected_weapon}",
+        f"MODE  {state.weapon_condition}",
+        f"SET   {state.weapon_setting}",
+    ]
+    for i, row in enumerate(rows):
+        fit_text(surface, row, [box.x + 6, box.y + 20 + i * 13, box.w - 12, 12],
+                 GREEN, 8, align="left")
 
 
 def _draw_weapons(panel, state):

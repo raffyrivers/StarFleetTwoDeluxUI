@@ -54,6 +54,13 @@ class ShipState:
         self.weapon_auto = True
         self.weapon_destroy = True
         self.combat_alignment = "BCS"
+        self.combat_overlays = {
+            "Menu": False,
+            "Grid": True,
+            "Head": True,
+            "Target": True,
+            "Line": False,
+        }
         self.ecm_enabled = False
         self.cmf_enabled = False
         self.tractor_enabled = False
@@ -443,6 +450,17 @@ class ShipState:
         self.combat_alignment = "SCS" if alignment == "SCS" else "BCS"
         self.add_message("Combat", f"{self.combat_alignment} alignment selected")
 
+    def set_combat_overlay(self, overlay, active):
+        if overlay not in self.combat_overlays:
+            return False
+        self.combat_overlays[overlay] = bool(active)
+        state = "shown" if active else "hidden"
+        self.add_message("Combat", f"{overlay.lower()} overlay {state}")
+        return True
+
+    def combat_overlay(self, overlay):
+        return bool(self.combat_overlays.get(overlay, False))
+
     def set_weapon_condition(self, condition):
         self.weapon_condition = "Cont" if condition == "Cont" else "Auto"
         self.weapon_auto = self.weapon_condition == "Auto"
@@ -684,6 +702,24 @@ class ShipState:
                 self.select_nav_contact(index, plot=False)
                 self.add_message("Targeting", f"target {self.selected_target.name}")
                 return
+
+    def select_combat_point(self, x, y, threshold=2.75):
+        candidates = [
+            (math.hypot(contact.x - x, contact.y - y), index)
+            for index, contact in enumerate(self.contacts)
+            if contact.status != "DESTROYED"
+        ]
+        if not candidates:
+            self.add_message("Targeting", "no tactical contacts")
+            return False
+        distance, index = min(candidates)
+        if distance > threshold:
+            self.add_message("Targeting", "no contact under cursor")
+            return False
+        self.target_index = index
+        self.add_message("Targeting", f"target {self.selected_target.name}")
+        self._sync_navigation()
+        return True
 
     # --- messages and reports -----------------------------------------
 

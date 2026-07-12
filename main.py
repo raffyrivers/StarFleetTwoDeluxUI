@@ -28,6 +28,7 @@ Controls:
 
 import pygame
 from datetime import datetime
+import math
 import os
 from pygame.locals import (FULLSCREEN, HWSURFACE, DOUBLEBUF, QUIT, KEYDOWN,
                            MOUSEBUTTONDOWN, MOUSEMOTION, K_F11, K_ESCAPE,
@@ -154,6 +155,27 @@ class Cockpit:
         if cockpit.reference_library_click(point):
             return True
 
+        combat_panel = cockpit.P["Combat Console"]
+        combat_grid = combat_panel.get("grid")
+        combat_rect = pygame.Rect(combat_panel.x + combat_grid.pos[0],
+                                  combat_panel.y + combat_grid.pos[1],
+                                  combat_grid.size[0], combat_grid.size[1])
+        if combat_rect.collidepoint(point):
+            local_x = point[0] - combat_rect.x
+            local_y = point[1] - combat_rect.y
+            cx, cy = combat_grid.rect.center
+            rel_x = (local_x - cx) / 15.0
+            rel_y = (local_y - cy) / 15.0
+            if self.state.combat_alignment == "BCS":
+                angle = math.radians(self.state.actual_heading)
+                rel_x, rel_y = (
+                    rel_x * math.cos(angle) - rel_y * math.sin(angle),
+                    rel_x * math.sin(angle) + rel_y * math.cos(angle),
+                )
+            self.state.select_combat_point(self.state.system_x + rel_x,
+                                           self.state.system_y + rel_y)
+            return True
+
         nav_panel = cockpit.P["Navigation"]
         nav_readout = nav_panel.get("nav readout")
         nav_rect = pygame.Rect(nav_panel.x + nav_readout.pos[0],
@@ -217,6 +239,8 @@ class Cockpit:
     def _handle_combat_button(self, button):
         if button.label in ("BCS", "SCS"):
             self.state.set_combat_alignment(button.label)
+        elif button.label in ("Menu", "Grid", "Head", "Target", "Line"):
+            self.state.set_combat_overlay(button.label, button.active)
         elif button.label in ("SRS", "LRS"):
             self.state.set_science_scope(button.label)
             button.active = False
