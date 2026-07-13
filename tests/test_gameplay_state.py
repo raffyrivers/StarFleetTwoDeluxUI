@@ -136,6 +136,24 @@ class GameplayStateTests(unittest.TestCase):
         self.assertFalse(target.threat)
         self.assertEqual(target.hull_pct, 15)
 
+    def test_combat_overlay_toggles_are_state_backed(self):
+        state = ShipState()
+        self.assertTrue(state.combat_overlay("Grid"))
+        self.assertTrue(state.set_combat_overlay("Grid", False))
+        self.assertFalse(state.combat_overlay("Grid"))
+        self.assertTrue(state.set_combat_overlay("Line", True))
+        self.assertTrue(state.combat_overlay("Line"))
+        self.assertFalse(state.set_combat_overlay("Bogus", True))
+
+    def test_combat_point_selects_nearest_tactical_contact(self):
+        state = ShipState()
+        enemy = next(i for i, c in enumerate(state.contacts) if c.kind == "ship")
+        target = state.contacts[enemy]
+        self.assertTrue(state.select_combat_point(target.x + 0.25, target.y + 0.25))
+        self.assertEqual(state.target_index, enemy)
+        self.assertFalse(state.select_combat_point(0, 0, threshold=0.01))
+        self.assertEqual(state.target_index, enemy)
+
     def test_enemy_return_fire_damages_ship_systems(self):
         state = ShipState()
         state.rng.seed(0)

@@ -205,11 +205,8 @@ class Cockpit:
         if button.group == "computer_menu":
             if button.label == "Self-Destruct":
                 self.state.activate_self_destruct()
-
             else:
                 self.state.set_computer_page(button.label)
-
-
 
     def _handle_combat_button(self, button):
         if button.label in ("BCS", "SCS"):
@@ -284,9 +281,7 @@ class Cockpit:
         elif key == pygame.K_r:
             st.plot_course_to_target()
         #to switch to krellan data in computer combat
-        elif event.key == pygame.K_k:
-            if self.state.computer_page == "combat stats":
-                self.state.combat_view = "krellan"
+        # elif key == pygame.K_k:
 
 
         elif key == pygame.K_LEFTBRACKET:
