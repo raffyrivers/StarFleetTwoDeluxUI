@@ -18,6 +18,7 @@ Controls:
   F2-F5          set ship damage state
   Ctrl+1-4       fallback damage keys for media-key keyboards
   d f g h j      combat overlays (menu, grid, heading, target, line)
+  e k            combat view switching(enemy and krellan) in computer display
   m , . /        shield modes
   Left / Right   select weapon
   9 0 -          communication feed (messages, reports, combined)
@@ -589,7 +590,28 @@ class Cockpit:
                 elif event.type == KEYDOWN:
                     self.key(event)
                 elif event.type == MOUSEBUTTONDOWN and event.button == 1:
+                    panel = self.state.computer_panel
+
+                    if panel.computer_mode.startswith("combat"):
+
+                        y = panel.rect.height - 40
+
+                        enemy_box = pygame.Rect(20, y, 120, 24)
+                        krellan_box = pygame.Rect(160, y, 140, 24)
+
+                        if enemy_box.collidepoint(event.pos):
+                            panel.computer_mode = "combat_enemy"
+                            panel.enemy_active = True
+                            panel.krellan_active = False
+                            return
+
+                        if krellan_box.collidepoint(event.pos):
+                            panel.computer_mode = "combat_krellan"
+                            panel.enemy_active = False
+                            panel.krellan_active = True
+                            return
                     self.click(event.pos)
+
                 elif event.type == MOUSEMOTION:
                     self.hover(event.pos)
             self.render(events)
