@@ -218,7 +218,7 @@ def _build_computer():
 
         if label == "Combat Stats":
             Button(panel,(menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h), label,group="computer_menu",
-                   on_toggle=lambda b, mode=label.lower(): setattr(panel,"computer_mode",mode if b.active else "default"))
+                   on_toggle=lambda b, mode="combat_enemy": setattr(panel,"computer_mode",mode if b.active else "default"))
 
         if label == "Information":
             Button(panel,(menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h),label,group="computer_menu",
@@ -709,8 +709,8 @@ def _draw_computer(state):
     screen = panel.get("screen")
     screen.surf.fill(BLACK)
 
-    if mode == "combat stats":
-        _draw_combat_stats(screen,state,"e")
+    if mode == "combat_enemy":
+        _draw_combat_stats(screen,state)
     if mode == "star systems":
         _draw_star_systems(screen,state)
 
@@ -718,89 +718,14 @@ def _draw_computer(state):
         _draw_self_destruct_screen(screen,state)
 
 
-def _draw_combat_stats(screen, state,view):
+def _draw_combat_stats(screen, state):
     surf = screen.surf
     rect = screen.rect
-    if view == "e":
-        fit_text(surf, "COMBAT STATUS REPORT - Enemy", [4, 4, rect.width - 8, 20], WHITE, 14)
 
-        headers = [
-            ("OBJECT", 70),
-            ("REL POS", 50),
-            ("BNG", 35),
-            ("VEL", 35),
-            ("HDG", 35),
-            ("L", 20),
-            ("T", 20),
-            ("POWER", 70),
-            ("AX.E", 30),
-            ("MN.E", 30),
-            ("DAM", 30),
-            ("STATUS", 38),
-        ]
+    panel = P["Computer Display"]
+    mode = panel.computer_mode
 
-        # Format:
-        # [object, relpos, bng, vel, hdg, L_flag, T_flag, power, ax.e, mn.e, dam, status]
-
-        base_rows = [
-            ["unknown", "26, -3", "95", "0.9", "211", 0, 1, "unknown", "unk", "unk", "unk", "HOSTILE"],
-            ["heavy cruiser", "-2, 1", "225", "0.9", "45", 0, 0, "3636 (72%)", "ok", "unk", "lgt", "HOSTILE"],
-            ["light cruiser", "9, -1", "225", "0.9", "90", 1, 0, "2724 (90%)", "ok", "unk", "med", "HOSTILE"],
-            ["unknown", "29, -31", "91", "0.9", "210", 1, 0, "unknown", "ok", "unk", "unk", "HOSTILE"],
-            ["destroyer", "29, -31", "91", "0.9", "210", 1, 0, "1757 (87%)", "ok", "unk", "unk", "HOSTILE"],
-            ["unknown", "31, 31", "91", "0.9", "210", 0, 1, "unknown", "ok", "unk", "unk", "HOSTILE"],
-        ]
-
-        rows = []
-        for r in base_rows:
-            L_flag = "x" if r[5] == 1 else ""
-            T_flag = "x" if r[6] == 1 else ""
-
-            row = [
-                r[0], r[1], r[2], r[3], r[4],
-                L_flag, T_flag,
-                r[7], r[8], r[9], r[10], r[11]
-            ]
-            rows.append(row)
-
-        start_x = 8
-        start_y = 32
-        x = start_x
-        for label, width in headers:
-            fit_text(surf, label, [x, start_y, width, 18], CYAN, 12)
-            x += width
-
-        pygame.draw.line(surf, FRAME_DIM, (start_x, start_y + 20), (rect.width - 8, start_y + 20), 1)
-
-        row_y = start_y + 24
-        for i, row in enumerate(rows):
-            x = start_x
-            bg = (25, 25, 25) if i % 2 else (0, 0, 0)
-            pygame.draw.rect(surf, bg, (start_x, row_y, rect.width - 16, 20))
-
-            for (label, width), cell in zip(headers, row):
-                fg = GREEN
-
-                if label == "DAM":
-                    if "med" in cell:
-                        fg = YELLOW
-                    elif "lgt" in cell:
-                        fg = CYAN
-
-                elif label == "STATUS" and "HOSTILE" in cell:
-                    fg = RED
-
-                elif label in ("L", "T") and cell == "x":
-                    fg = CYAN
-
-                fit_text(surf, cell, [x, row_y, width, 20], fg, 12)
-                x += width
-
-            row_y += 20
-
-        pygame.draw.rect(surf, FRAME_DIM, (4, 24, rect.width - 8, rect.height - 32), 1)
-
-    if view == "k":
+    if state == "krellan":
         fit_text(surf, "COMBAT STATUS REPORT - Krellan Forces",
                  [4, 4, rect.width - 8, 20], WHITE, 14)
 
@@ -883,6 +808,86 @@ def _draw_combat_stats(screen, state,view):
                 x += width
 
             row_y += 20
+
+    fit_text(surf, "COMBAT STATUS REPORT - Enemy", [4, 4, rect.width - 8, 20], WHITE, 14)
+
+    headers = [
+        ("OBJECT", 70),
+        ("REL POS", 50),
+        ("BNG", 35),
+        ("VEL", 35),
+        ("HDG", 35),
+        ("L", 20),
+        ("T", 20),
+        ("POWER", 70),
+        ("AX.E", 30),
+        ("MN.E", 30),
+        ("DAM", 30),
+        ("STATUS", 38),
+    ]
+
+    # Format and data placeholders from book
+    # [object, relpos, bng, vel, hdg, L_flag, T_flag, power, ax.e, mn.e, dam, status]
+
+    base_rows = [
+        ["unknown", "26, -3", "95", "0.9", "211", 0, 1, "unknown", "unk", "unk", "unk", "HOSTILE"],
+        ["heavy cruiser", "-2, 1", "225", "0.9", "45", 0, 0, "3636 (72%)", "ok", "unk", "lgt", "HOSTILE"],
+        ["light cruiser", "9, -1", "225", "0.9", "90", 1, 0, "2724 (90%)", "ok", "unk", "med", "HOSTILE"],
+        ["unknown", "29, -31", "91", "0.9", "210", 1, 0, "unknown", "ok", "unk", "unk", "HOSTILE"],
+        ["destroyer", "29, -31", "91", "0.9", "210", 1, 0, "1757 (87%)", "ok", "unk", "unk", "HOSTILE"],
+        ["unknown", "31, 31", "91", "0.9", "210", 0, 1, "unknown", "ok", "unk", "unk", "HOSTILE"],
+    ]
+
+    rows = []
+    for r in base_rows:
+        L_flag = "x" if r[5] == 1 else ""
+        T_flag = "x" if r[6] == 1 else ""
+
+        row = [
+            r[0], r[1], r[2], r[3], r[4],
+            L_flag, T_flag,
+            r[7], r[8], r[9], r[10], r[11]
+        ]
+        rows.append(row)
+
+    start_x = 8
+    start_y = 32
+    x = start_x
+    for label, width in headers:
+        fit_text(surf, label, [x, start_y, width, 18], CYAN, 12)
+        x += width
+
+    pygame.draw.line(surf, FRAME_DIM, (start_x, start_y + 20), (rect.width - 8, start_y + 20), 1)
+
+    row_y = start_y + 24
+    for i, row in enumerate(rows):
+        x = start_x
+        bg = (25, 25, 25) if i % 2 else (0, 0, 0)
+        pygame.draw.rect(surf, bg, (start_x, row_y, rect.width - 16, 20))
+
+        for (label, width), cell in zip(headers, row):
+            fg = GREEN
+
+            if label == "DAM":
+                if "med" in cell:
+                    fg = YELLOW
+                elif "lgt" in cell:
+                    fg = CYAN
+
+            elif label == "STATUS" and "HOSTILE" in cell:
+                fg = RED
+
+            elif label in ("L", "T") and cell == "x":
+                fg = CYAN
+
+            fit_text(surf, cell, [x, row_y, width, 20], fg, 12)
+            x += width
+
+        row_y += 20
+
+    pygame.draw.rect(surf, FRAME_DIM, (4, 24, rect.width - 8, rect.height - 32), 1)
+
+
 
 def _draw_self_destruct_screen(screen, state):
     surf = screen.surf
