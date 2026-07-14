@@ -896,7 +896,7 @@ def _draw_computer_combat_stats(screen, state, view):
 
             row_y += 20
 
-        pygame.draw.rect(surf, FRAME_DIM, (4, 24, rect.width - 8, rect.height - 32), 1)
+        pygame.draw.rect(surf, FRAME_DIM, _computer_combat_body_rect(screen), 1)
 
     elif view == "k":
         fit_text(surf, "COMBAT STATUS REPORT - Krellan Forces",
@@ -979,25 +979,48 @@ def _draw_computer_combat_stats(screen, state, view):
                 x += width
 
             row_y += 20
-        pygame.draw.rect(surf, FRAME_DIM, (4, 24, rect.width - 8, rect.height - 32), 1)
+        pygame.draw.rect(surf, FRAME_DIM, _computer_combat_body_rect(screen), 1)
 
+    _draw_computer_combat_tabs(surf, screen, view)
+
+
+def _computer_combat_body_rect(screen):
+    footer_y = _computer_combat_footer_y(screen)
+    return pygame.Rect(4, 24, screen.rect.width - 8, max(36, footer_y - 32))
+
+
+def _computer_combat_footer_y(screen):
+    return screen.rect.height - 31
+
+
+def _draw_computer_combat_tabs(surf, screen, view):
+    footer_y = _computer_combat_footer_y(screen)
+    pygame.draw.line(surf, FRAME_DIM, (8, footer_y - 7),
+                     (screen.rect.width - 8, footer_y - 7), 1)
     enemy_box, krellan_box = _computer_combat_tab_rects(screen)
+    _draw_computer_footer_tab(surf, enemy_box, "Enemy [e]", view == "e")
+    _draw_computer_footer_tab(surf, krellan_box, "Krellan [k]", view == "k")
 
-    color = WHITE if view == "e" else GREY
-    pygame.draw.rect(surf, color, enemy_box)
-    pygame.draw.rect(surf, FRAME_DIM, enemy_box, 1)
-    fit_text(surf, "Enemy [e]", [enemy_box.x + 5, enemy_box.y, enemy_box.width - 10, enemy_box.height],
-             BLACK, 12)
-    color = WHITE if view == "k" else GREY
-    pygame.draw.rect(surf, color, krellan_box)
-    pygame.draw.rect(surf, FRAME_DIM, krellan_box, 1)
-    fit_text(surf, "Krellan [k]",
-             [krellan_box.x + 5, krellan_box.y, krellan_box.width - 10, krellan_box.height],
-             BLACK, 12)
+
+def _draw_computer_footer_tab(surf, rect, label, active):
+    fill = WHITE if active else BUTTON_FACE
+    pygame.draw.rect(surf, fill, rect)
+    pygame.draw.line(surf, WHITE, rect.topleft, (rect.right - 1, rect.y), 2)
+    pygame.draw.line(surf, WHITE, rect.topleft, (rect.x, rect.bottom - 1), 2)
+    pygame.draw.line(surf, FRAME_DIM, (rect.x, rect.bottom - 1),
+                     (rect.right - 1, rect.bottom - 1), 2)
+    pygame.draw.line(surf, FRAME_DIM, (rect.right - 1, rect.y),
+                     (rect.right - 1, rect.bottom - 1), 2)
+    if active:
+        pygame.draw.line(surf, GREEN, (rect.x + 8, rect.bottom - 4),
+                         (rect.right - 8, rect.bottom - 4), 2)
+    pygame.draw.rect(surf, BLACK, rect, 1)
+    fit_text(surf, label, [rect.x + 8, rect.y + 1, rect.width - 16, rect.height - 3],
+             BLACK, 12, align="center")
 
 
 def _computer_combat_tab_rects(screen):
-    y = screen.rect.height - 30
+    y = _computer_combat_footer_y(screen)
     return pygame.Rect(20, y, 120, 24), pygame.Rect(160, y, 140, 24)
 
 
