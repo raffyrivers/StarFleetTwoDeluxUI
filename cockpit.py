@@ -214,6 +214,12 @@ def _build_computer():
     Display(panel, "options", (90, 250), (5, 5))
     Display(panel, "screen", (475, 250), (100, 5))
 
+    #footer buttons
+    #combat
+    panel.combat_view_buttons = []
+
+
+
     menu_x, menu_y, menu_w, menu_h, menu_gap = 8, 7, 84, 22, 3
     for i, label in enumerate(menu):
 
@@ -713,17 +719,22 @@ def _draw_computer(state):
     screen.surf.fill(BLACK)
 
     if mode == "combat_enemy" or mode == "combat_krellan":
-        _draw_combat_stats(screen,state)
+        _draw_computer_combat_stats(screen, state)
+
+    else:
+        panel.combat_view_buttons.clear()
     if mode == "star systems":
         _draw_star_systems(screen,state)
     if mode == "self-destruct":
         _draw_self_destruct_screen(screen,state)
 
 
-def _draw_combat_stats(screen, state):
+def _draw_computer_combat_stats(screen, state):
     surf = screen.surf
     rect = screen.rect
     panel = P["Computer Display"]
+
+    state.computer_panel = panel
     if panel.computer_mode == "combat_enemy":
         fit_text(surf, "COMBAT STATUS REPORT - Enemy", [4, 4, rect.width - 8, 20], WHITE, 14)
 
@@ -802,6 +813,7 @@ def _draw_combat_stats(screen, state):
             row_y += 20
 
         pygame.draw.rect(surf, FRAME_DIM, (4, 24, rect.width - 8, rect.height - 32), 1)
+
 
     if panel.computer_mode == "combat_krellan":
         fit_text(surf, "COMBAT STATUS REPORT - Krellan",
@@ -885,6 +897,28 @@ def _draw_combat_stats(screen, state):
                 x += width
 
             row_y += 20
+
+    y = panel.rect.height - 40
+    enemy_box = pygame.Rect(20, y, 120, 24)
+    krellan_box = pygame.Rect(160, y, 140, 24)
+
+    # Enemy box
+    color = WHITE if panel.computer_mode == "combat_enemy" else GREY
+    pygame.draw.rect(surf, color, enemy_box)
+    fit_text(surf, "Enemy [e]", [enemy_box.x + 5, enemy_box.y, enemy_box.width - 10, enemy_box.height],
+             BLACK, 12)
+    # Krellan box
+    color = WHITE if panel.computer_mode == "combat_krellan" else GREY
+    pygame.draw.rect(surf, color, krellan_box)
+    fit_text(
+        surf,
+        "Krellan [k]",
+        [krellan_box.x + 5, krellan_box.y + 4, krellan_box.width - 10, krellan_box.height],
+        BLACK,
+        12
+    )
+
+
 
 def _draw_self_destruct_screen(screen, state):
     surf = screen.surf
