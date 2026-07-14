@@ -723,7 +723,7 @@ def _draw_computer(state):
     if mode == "default":
         _draw_computer_landing(screen, state)
     elif mode == "combat_enemy" or mode == "combat_krellan":
-        _draw_computer_combat_stats(screen, state, getattr(panel, "computer_combat_view", "e"))
+        _draw_computer_combat_stats(screen, state)
     elif mode == "star systems":
         _draw_star_systems(screen,state)
     elif mode == "self-destruct":
@@ -814,7 +814,7 @@ def _draw_computer_database_page(screen, state, mode):
         y += 30
 
 
-def _draw_computer_combat_stats(screen, state, view):
+def _draw_computer_combat_stats(screen, state):
     surf = screen.surf
     rect = screen.rect
     panel = P["Computer Display"]
