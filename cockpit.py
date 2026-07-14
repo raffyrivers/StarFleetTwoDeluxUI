@@ -159,7 +159,7 @@ def _build_navigation():
 def _build_navigation_data():
     panel = P["Navigation"]
     Display(panel, "nav readout", (192, 145), (2, 22), double_border=False)
-    Button(panel, (122, 62, 66, 18), "Evasive", text_size=12)
+    Button(panel, (122, 62, 66, 18), "Evasive", key=pygame.K_e, text_size=12)
     Button(panel, (126, 94, 28, 22), "<<", text_size=16)
     Button(panel, (160, 94, 28, 22), ">>", text_size=16)
 
@@ -208,6 +208,7 @@ class _Indicator:
 def _build_computer():
     panel = P["Computer Display"]
     panel.computer_mode = "default"
+    panel.computer_combat_view = "e"
 
     menu = ["Combat Stats", "Information", "Landing Party", "Planets", "Star Systems",
             "Bases", "Intelligence", "Reference Lib", "Self-Destruct", "Special Services"]
@@ -225,7 +226,7 @@ def _build_computer():
 
         if label == "Combat Stats":
             Button(panel,(menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h), label,group="computer_menu",
-                   on_toggle=lambda b, mode=label.lower(): setattr(panel,"computer_mode","combat_enemy" if b.active else "default"))
+                   on_toggle=lambda b, mode=label.lower(): setattr(panel,"computer_mode",mode if b.active else "default"))
 
 
         if label == "Information":
@@ -710,7 +711,6 @@ def _draw_status_indicators(state):
 
 def _draw_computer(state):
     panel = P["Computer Display"]
-    state.computer_panel = panel
     options = panel.get("options")
     options.surf.fill(PANEL_BG)
     mode = panel.computer_mode
@@ -718,24 +718,108 @@ def _draw_computer(state):
     screen = panel.get("screen")
     screen.surf.fill(BLACK)
 
-    if mode == "combat_enemy" or mode == "combat_krellan":
-        _draw_computer_combat_stats(screen, state)
-
-    else:
+    if mode == "default":
+        _draw_computer_landing(screen, state)
         panel.combat_view_buttons.clear()
-    if mode == "star systems":
+    elif mode == "combat stats":
+        _draw_computer_combat_stats(screen, state, getattr(panel, "computer_combat_view", "e"))
+    elif mode == "star systems":
         _draw_star_systems(screen,state)
-    if mode == "self-destruct":
+        panel.combat_view_buttons.clear()
+    elif mode == "self-destruct":
         _draw_self_destruct_screen(screen,state)
+        panel.combat_view_buttons.clear()
+    else:
+        _draw_computer_database_page(screen, state, mode)
+        panel.combat_view_buttons.clear()
 
 
-def _draw_computer_combat_stats(screen, state):
+def _draw_computer_landing(screen, state):
     surf = screen.surf
     rect = screen.rect
-    panel = P["Computer Display"]
+    pygame.draw.rect(surf, FRAME_DIM, (4, 4, rect.width - 8, rect.height - 8), 1)
+    fit_text(surf, "SHIP INFORMATION SYSTEM", [10, 8, rect.width - 20, 20],
+             WHITE, 14, align="center")
+    fit_text(surf, "KRELLAN BATTLECRUISER COMPUTER", [10, 29, rect.width - 20, 14],
+             CYAN, 10, align="center")
 
-    state.computer_panel = panel
-    if panel.computer_mode == "combat_enemy":
+    status_rows = [
+        ("Alert", state.alert_status, RED if state.alert_status == "Red" else GREEN),
+        ("Mission", f"{state.mission_elapsed_days:.2f} / {state.time_left_days:.2f} days", GREEN),
+        ("Region", f"{state.nav_region[0]}, {state.nav_region[1]}", GREEN),
+        ("System", f"{state.system_x:.0f}, {state.system_y:.0f}", GREEN),
+        ("Power", f"{state.energy_pct}%", RED if state.energy_pct < 25 else GREEN),
+        ("Hull", f"{state.hull_pct}%", RED if state.hull_pct < 40 else GREEN),
+    ]
+    for col, (title, rows) in enumerate((("SHIP", status_rows[:3]), ("READINESS", status_rows[3:]))):
+        box = pygame.Rect(18 + col * 224, 56, 204, 82)
+        pygame.draw.rect(surf, (8, 8, 8), box)
+        pygame.draw.rect(surf, FRAME_DIM, box, 1)
+        fit_text(surf, title, [box.x + 8, box.y + 6, box.w - 16, 14], CYAN, 10, align="left")
+        for i, (label, value, fg) in enumerate(rows):
+            y = box.y + 26 + i * 17
+            fit_text(surf, label, [box.x + 10, y, 70, 14], CYAN, 10, align="left")
+            fit_text(surf, value, [box.x + 82, y, box.w - 92, 14], fg, 10, align="left")
+
+    modules = [
+        ("Combat Stats", "enemy and Krellan reports"),
+        ("Information", "ship records"),
+        ("Landing Party", "troop status"),
+        ("Planets", "survey files"),
+        ("Star Systems", "regional database"),
+        ("Bases", "installation records"),
+        ("Intelligence", "enemy data"),
+        ("Reference Lib", "manual index"),
+    ]
+    fit_text(surf, "DATABASE CATALOG", [18, 150, rect.width - 36, 15], WHITE, 11, align="left")
+    for i, (name, detail) in enumerate(modules):
+        col = i % 2
+        row = i // 2
+        x = 18 + col * 224
+        y = 171 + row * 16
+        fit_text(surf, name, [x, y, 94, 13], GREEN, 9, align="left")
+        fit_text(surf, detail, [x + 100, y, 112, 13], CYAN, 8, align="left")
+
+    footer = f"Contacts {len(state.scanner_contacts())}   Torpedoes {state.torpedoes}   Prisoners {state.prisoners}"
+    fit_text(surf, footer, [18, rect.height - 19, rect.width - 36, 13], YELLOW, 9, align="center")
+
+
+def _draw_computer_database_page(screen, state, mode):
+    surf = screen.surf
+    rect = screen.rect
+    title = mode.replace("-", " ").title()
+    pygame.draw.rect(surf, FRAME_DIM, (4, 4, rect.width - 8, rect.height - 8), 1)
+    fit_text(surf, title.upper(), [10, 10, rect.width - 20, 18], WHITE, 13, align="center")
+    rows = {
+        "information": [("Ship", "Klagar-class battlecruiser"), ("Crew", str(state.crew)),
+                        ("Power", f"{state.energy_pct}%"), ("Hull", f"{state.hull_pct}%")],
+        "landing party": [("Shock Troops", str(state.shock_troops)), ("Space Marines", str(state.marines)),
+                          ("Prisoners", str(state.prisoners)), ("Boarding", state.boarding_context()["status"])],
+        "planets": [("Selected", state.selected_target["name"]), ("Object", state.selected_target["kind"].title()),
+                    ("Region", f"{state.nav_region[0]}, {state.nav_region[1]}"), ("System", f"{state.system_x:.0f}, {state.system_y:.0f}")],
+        "bases": [("Known Contacts", str(len([c for c in state.contacts if c.kind == "base"]))),
+                  ("Target", state.selected_target["name"]), ("Shields", "UP" if state.selected_target.get("shields_up") else "DOWN")],
+        "intelligence": [("Threat Contacts", str(len([c for c in state.scanner_contacts() if c.get("threat")]))),
+                         ("Alert", state.alert_status), ("ECM", "ACTIVE" if state.ecm_enabled else "OFF")],
+        "reference lib": [("Navigation", "course, maps, movement"), ("Sensors", "LRS, SRS, ECM limits"),
+                          ("Combat", "weapons and target data"), ("Controls", "keyboard and panel toggles")],
+        "special services": [("Self-Destruct", "computer menu authorization"), ("Rest", "primary display control"),
+                             ("Snapshot", "status indicator control")],
+    }.get(mode, [("Status", "No database records loaded")])
+    y = 54
+    for label, value in rows:
+        fit_text(surf, label, [40, y, 120, 18], CYAN, 12, align="left")
+        box = pygame.Rect(170, y - 1, rect.width - 210, 20)
+        pygame.draw.rect(surf, BLACK, box)
+        pygame.draw.rect(surf, FRAME_DIM, box, 1)
+        fit_text(surf, value, box.inflate(-8, -2), GREEN, 11, align="left")
+        y += 30
+
+
+def _draw_computer_combat_stats(screen, state, view):
+    surf = screen.surf
+    rect = screen.rect
+    if view == "e":
         fit_text(surf, "COMBAT STATUS REPORT - Enemy", [4, 4, rect.width - 8, 20], WHITE, 14)
 
         headers = [
@@ -814,9 +898,8 @@ def _draw_computer_combat_stats(screen, state):
 
         pygame.draw.rect(surf, FRAME_DIM, (4, 24, rect.width - 8, rect.height - 32), 1)
 
-
-    if panel.computer_mode == "combat_krellan":
-        fit_text(surf, "COMBAT STATUS REPORT - Krellan",
+    elif view == "k":
+        fit_text(surf, "COMBAT STATUS REPORT - Krellan Forces",
                  [4, 4, rect.width - 8, 20], WHITE, 14)
 
         headers = [
@@ -835,12 +918,12 @@ def _draw_computer_combat_stats(screen, state):
         ]
 
         base_rows = [
-            ["Krellan BC", "12, -4", "045", "1.2", "090", 1, 0, "88%", "12", "8", "0", "HOSTILE"],
-            ["Krellan DD", "18, 10", "120", "1.4", "270", 0, 1, "72%", "10", "6", "5", "HOSTILE"],
-            ["Krellan FF", "5, -22", "200", "1.8", "315", 1, 0, "55%", "8", "4", "12", "HOSTILE"],
-            ["Krellan Scout", "30, 5", "010", "0.8", "040", 0, 1, "40%", "4", "2", "20", "HOSTILE"],
-            ["Mine Layer", "2, 2", "180", "0.0", "000", 1, 0, "100%", "0", "0", "0", "HOSTILE"],
-            ["Drone", "7, -1", "270", "0.4", "180", 0, 1, "20%", "1", "1", "80", "HOSTILE"],
+            ["Krellan BC", "12, -4", "045", "1.2", "090", 1, 0, "88%", "12", "8", "0", "READY"],
+            ["Krellan DD", "18, 10", "120", "1.4", "270", 0, 1, "72%", "10", "6", "5", "ESCORT"],
+            ["Krellan FF", "5, -22", "200", "1.8", "315", 1, 0, "55%", "8", "4", "12", "PATROL"],
+            ["Krellan Scout", "30, 5", "010", "0.8", "040", 0, 1, "40%", "4", "2", "20", "SCOUT"],
+            ["Mine Layer", "2, 2", "180", "0.0", "000", 1, 0, "100%", "0", "0", "0", "READY"],
+            ["Drone", "7, -1", "270", "0.4", "180", 0, 1, "20%", "1", "1", "80", "READY"],
         ]
 
         rows = []
@@ -855,22 +938,21 @@ def _draw_computer_combat_stats(screen, state):
             ]
             rows.append(row)
 
-            start_x = 8
-            start_y = 32
+        start_x = 8
+        start_y = 32
+        x = start_x
+        for label, width in headers:
+            fit_text(surf, label, [x, start_y, width, 18], CYAN, 12)
+            x += width
+
+        pygame.draw.line(surf, FRAME_DIM,
+                         (start_x, start_y + 20), (rect.width - 8, start_y + 20), 1)
+
+        row_y = start_y + 24
+        for i, row in enumerate(rows):
             x = start_x
-            for label, width in headers:
-                fit_text(surf, label, [x, start_y, width, 18], CYAN, 12)
-                x += width
-
-            pygame.draw.line(surf, FRAME_DIM,
-                             (start_x, start_y + 20), (rect.width - 8, start_y + 20), 1)
-
-            # --- Draw rows ---
-            row_y = start_y + 24
-            for i, row in enumerate(rows):
-                x = start_x
-                bg = (25, 25, 25) if i % 2 else (0, 0, 0)
-                pygame.draw.rect(surf, bg, (start_x, row_y, rect.width - 16, 20))
+            bg = (25, 25, 25) if i % 2 else (0, 0, 0)
+            pygame.draw.rect(surf, bg, (start_x, row_y, rect.width - 16, 20))
 
             for (label, width), cell in zip(headers, row):
                 fg = GREEN
@@ -897,26 +979,46 @@ def _draw_computer_combat_stats(screen, state):
                 x += width
 
             row_y += 20
+        pygame.draw.rect(surf, FRAME_DIM, (4, 24, rect.width - 8, rect.height - 32), 1)
 
-    y = panel.rect.height - 40
-    enemy_box = pygame.Rect(20, y, 120, 24)
-    krellan_box = pygame.Rect(160, y, 140, 24)
+    enemy_box, krellan_box = _computer_combat_tab_rects(screen)
 
-    # Enemy box
-    color = WHITE if panel.computer_mode == "combat_enemy" else GREY
+    color = WHITE if view == "e" else GREY
     pygame.draw.rect(surf, color, enemy_box)
+    pygame.draw.rect(surf, FRAME_DIM, enemy_box, 1)
     fit_text(surf, "Enemy [e]", [enemy_box.x + 5, enemy_box.y, enemy_box.width - 10, enemy_box.height],
              BLACK, 12)
-    # Krellan box
-    color = WHITE if panel.computer_mode == "combat_krellan" else GREY
+    color = WHITE if view == "k" else GREY
     pygame.draw.rect(surf, color, krellan_box)
-    fit_text(
-        surf,
-        "Krellan [k]",
-        [krellan_box.x + 5, krellan_box.y + 4, krellan_box.width - 10, krellan_box.height],
-        BLACK,
-        12
-    )
+    pygame.draw.rect(surf, FRAME_DIM, krellan_box, 1)
+    fit_text(surf, "Krellan [k]",
+             [krellan_box.x + 5, krellan_box.y, krellan_box.width - 10, krellan_box.height],
+             BLACK, 12)
+
+
+def _computer_combat_tab_rects(screen):
+    y = screen.rect.height - 30
+    return pygame.Rect(20, y, 120, 24), pygame.Rect(160, y, 140, 24)
+
+
+def computer_combat_tab_click(point):
+    panel = P["Computer Display"]
+    if panel.computer_mode != "combat stats":
+        return False
+    screen = panel.get("screen")
+    screen_rect = pygame.Rect(panel.x + screen.pos[0], panel.y + screen.pos[1],
+                              screen.size[0], screen.size[1])
+    if not screen_rect.collidepoint(point):
+        return False
+    local = (point[0] - screen_rect.x, point[1] - screen_rect.y)
+    enemy_box, krellan_box = _computer_combat_tab_rects(screen)
+    if enemy_box.collidepoint(local):
+        panel.computer_combat_view = "e"
+        return True
+    if krellan_box.collidepoint(local):
+        panel.computer_combat_view = "k"
+        return True
+    return False
 
 
 
@@ -1207,37 +1309,40 @@ def _draw_combat(state):
     cx, cy = grid.rect.center
     pygame.draw.line(grid.surf, WHITE, (10, cy), (grid.rect.width - 10, cy), 2)
     pygame.draw.line(grid.surf, WHITE, (cx, 10), (cx, grid.rect.height - 10), 2)
-    for step in range(-8, 9):
-        gx = cx + step * 25
-        gy = cy + step * 25
-        if 0 < gx < grid.rect.width:
-            pygame.draw.line(grid.surf, WHITE, (gx, cy - 8), (gx, cy + 8), 1)
-        if 0 < gy < grid.rect.height:
-            pygame.draw.line(grid.surf, WHITE, (cx - 8, gy), (cx + 8, gy), 1)
 
-    overlay = pygame.Surface(grid.size, pygame.SRCALPHA)
-    for gx in range(18, grid.rect.width, 22):
-        for gy in range(18, grid.rect.height, 22):
-            dot = (95, 120, 235, 100) if abs(gx - cx) + abs(gy - cy) > 130 else (210, 120, 55, 120)
-            pygame.draw.circle(overlay, dot, (gx, gy), 2)
-    pygame.draw.circle(overlay, (90, 110, 230, 150), (cx, cy), 165, 2)
-    pygame.draw.circle(overlay, (255, 140, 80, 150), (cx, cy), 105, 2)
-    grid.surf.blit(overlay, (0, 0))
-    for deg in range(0, 360, 15):
-        if deg % 30 == 0:
-            rad = math.radians(deg - 90)
-            tx = cx + int(178 * math.cos(rad))
-            ty = cy + int(178 * math.sin(rad))
-            text_line(grid.surf, str(deg), (tx, ty), WHITE, 10, align="center")
+    if state.combat_overlay("Grid"):
+        for step in range(-8, 9):
+            gx = cx + step * 25
+            gy = cy + step * 25
+            if 0 < gx < grid.rect.width:
+                pygame.draw.line(grid.surf, WHITE, (gx, cy - 8), (gx, cy + 8), 1)
+            if 0 < gy < grid.rect.height:
+                pygame.draw.line(grid.surf, WHITE, (cx - 8, gy), (cx + 8, gy), 1)
+
+        overlay = pygame.Surface(grid.size, pygame.SRCALPHA)
+        for gx in range(18, grid.rect.width, 22):
+            for gy in range(18, grid.rect.height, 22):
+                dot = (95, 120, 235, 100) if abs(gx - cx) + abs(gy - cy) > 130 else (210, 120, 55, 120)
+                pygame.draw.circle(overlay, dot, (gx, gy), 2)
+        pygame.draw.circle(overlay, (90, 110, 230, 150), (cx, cy), 165, 2)
+        pygame.draw.circle(overlay, (255, 140, 80, 150), (cx, cy), 105, 2)
+        grid.surf.blit(overlay, (0, 0))
+
+    if state.combat_overlay("Head"):
+        for deg in range(0, 360, 15):
+            if deg % 30 == 0:
+                rad = math.radians(deg - 90)
+                tx = cx + int(178 * math.cos(rad))
+                ty = cy + int(178 * math.sin(rad))
+                text_line(grid.surf, str(deg), (tx, ty), WHITE, 10, align="center")
+        heading_rad = math.radians(state.actual_heading - 90)
+        pygame.draw.line(grid.surf, YELLOW, (cx, cy),
+                         (cx + int(48 * math.cos(heading_rad)),
+                          cy + int(48 * math.sin(heading_rad))), 1)
+
+    target_point = None
     for contact in state.tactical_contacts():
-        dx = contact["x"] - state.system_x
-        dy = contact["y"] - state.system_y
-        if state.combat_alignment == "BCS":
-            angle = math.radians(-state.actual_heading)
-            dx, dy = (dx * math.cos(angle) - dy * math.sin(angle),
-                      dx * math.sin(angle) + dy * math.cos(angle))
-        px = max(18, min(grid.rect.width - 18, cx + int(dx * 15)))
-        py = max(18, min(grid.rect.height - 18, cy + int(dy * 15)))
+        px, py = _combat_contact_point(grid, state, contact)
         selected = contact["id"] == state.selected_target["id"]
         col = RED if contact.get("threat") else (GREEN if contact["kind"] == "base" else CYAN)
         shape = [(px, py - 9), (px + 9, py + 7), (px - 9, py + 7)]
@@ -1246,7 +1351,25 @@ def _draw_combat(state):
         else:
             pygame.draw.polygon(grid.surf, col, shape)
         if selected:
+            target_point = (px, py)
+
+        if selected and state.combat_overlay("Target"):
             pygame.draw.rect(grid.surf, MAGENTA, (px - 12, py - 12, 24, 24), 1)
+            fit_text(grid.surf, contact["id"], [px + 14, py - 9, 64, 14],
+                     YELLOW if contact.get("threat") else GREEN, 9, align="left")
+
+    if state.combat_overlay("Line") and target_point:
+        pygame.draw.line(grid.surf, MAGENTA, (cx, cy), target_point, 1)
+        solution = state.target_solution()
+        label = f"{solution['bearing']}  {solution['rpos']}"
+        mid = ((cx + target_point[0]) // 2 + 6, (cy + target_point[1]) // 2 - 10)
+        fit_text(grid.surf, label, [mid[0], mid[1], 110, 13], MAGENTA, 9, align="left")
+
+    if state.combat_overlay("Target"):
+        _draw_combat_target_overlay(grid.surf, state)
+
+    if state.combat_overlay("Menu"):
+        _draw_combat_menu_overlay(grid.surf, state)
 
     grid.surf.blit(pygame.transform.smoothscale(asset("combcShip.png"), (34, 34)),
                    (cx - 17, cy - 17))
@@ -1276,6 +1399,53 @@ def _sync_combat_buttons(panel, state):
                 element.active = False
             elif element.group == "science_page":
                 element.active = element.label == state.science_page
+            elif element.label in state.combat_overlays:
+                element.active = state.combat_overlay(element.label)
+
+
+def _combat_contact_point(grid, state, contact):
+    cx, cy = grid.rect.center
+    dx = contact["x"] - state.system_x
+    dy = contact["y"] - state.system_y
+    if state.combat_alignment == "BCS":
+        angle = math.radians(-state.actual_heading)
+        dx, dy = (dx * math.cos(angle) - dy * math.sin(angle),
+                  dx * math.sin(angle) + dy * math.cos(angle))
+    px = max(18, min(grid.rect.width - 18, cx + int(dx * 15)))
+    py = max(18, min(grid.rect.height - 18, cy + int(dy * 15)))
+    return px, py
+
+
+def _draw_combat_target_overlay(surface, state):
+    solution = state.target_solution()
+    box = pygame.Rect(8, 8, 128, 62)
+    pygame.draw.rect(surface, BLACK, box)
+    pygame.draw.rect(surface, MAGENTA, box, 1)
+    fit_text(surface, "TARGET", [box.x + 6, box.y + 4, box.w - 12, 13], CYAN, 9, align="left")
+    rows = [
+        state.selected_target["name"][:18],
+        f"BRG {solution['bearing']}  VEL {solution['velocity']}",
+        f"HULL {solution['hull']}  SHD {solution['shields']}",
+    ]
+    for i, row in enumerate(rows):
+        fit_text(surface, row, [box.x + 6, box.y + 19 + i * 13, box.w - 12, 12],
+                 YELLOW if i == 0 else GREEN, 8, align="left")
+
+
+def _draw_combat_menu_overlay(surface, state):
+    box = pygame.Rect(surface.get_width() - 146, 8, 136, 78)
+    pygame.draw.rect(surface, BLACK, box)
+    pygame.draw.rect(surface, CYAN, box, 1)
+    fit_text(surface, "TACTICAL MENU", [box.x + 6, box.y + 4, box.w - 12, 13], CYAN, 9, align="left")
+    rows = [
+        f"ALIGN {state.combat_alignment}",
+        f"WEAP  {state.selected_weapon}",
+        f"MODE  {state.weapon_condition}",
+        f"SET   {state.weapon_setting}",
+    ]
+    for i, row in enumerate(rows):
+        fit_text(surface, row, [box.x + 6, box.y + 20 + i * 13, box.w - 12, 12],
+                 GREEN, 8, align="left")
 
 
 def _draw_weapons(panel, state):
