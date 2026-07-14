@@ -159,7 +159,8 @@ def _build_navigation():
 def _build_navigation_data():
     panel = P["Navigation"]
     Display(panel, "nav readout", (192, 145), (2, 22), double_border=False)
-    Button(panel, (122, 62, 66, 18), "Evasive", key=pygame.K_e, text_size=12)
+    #had to unbind 'e' because it's being used for the combat view in computer display
+    Button(panel, (122, 62, 66, 18), "Evasive", text_size=12)
     Button(panel, (126, 94, 28, 22), "<<", text_size=16)
     Button(panel, (160, 94, 28, 22), ">>", text_size=16)
 
@@ -217,7 +218,7 @@ def _build_computer():
 
     #footer buttons
     #combat
-    panel.combat_view_buttons = []
+    # panel.combat_view_buttons = []
 
 
 
@@ -226,7 +227,7 @@ def _build_computer():
 
         if label == "Combat Stats":
             Button(panel,(menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h), label,group="computer_menu",
-                   on_toggle=lambda b, mode=label.lower(): setattr(panel,"computer_mode",mode if b.active else "default"))
+                   on_toggle=lambda b, mode=label.lower(): setattr(panel,"computer_mode","combat_enemy" if b.active else "default"))
 
 
         if label == "Information":
@@ -714,24 +715,21 @@ def _draw_computer(state):
     options = panel.get("options")
     options.surf.fill(PANEL_BG)
     mode = panel.computer_mode
+    state.computer_panel = panel
 
     screen = panel.get("screen")
     screen.surf.fill(BLACK)
 
     if mode == "default":
         _draw_computer_landing(screen, state)
-        panel.combat_view_buttons.clear()
-    elif mode == "combat stats":
+    elif mode == "combat_enemy" or mode == "combat_krellan":
         _draw_computer_combat_stats(screen, state, getattr(panel, "computer_combat_view", "e"))
     elif mode == "star systems":
         _draw_star_systems(screen,state)
-        panel.combat_view_buttons.clear()
     elif mode == "self-destruct":
         _draw_self_destruct_screen(screen,state)
-        panel.combat_view_buttons.clear()
     else:
         _draw_computer_database_page(screen, state, mode)
-        panel.combat_view_buttons.clear()
 
 
 def _draw_computer_landing(screen, state):
@@ -819,7 +817,10 @@ def _draw_computer_database_page(screen, state, mode):
 def _draw_computer_combat_stats(screen, state, view):
     surf = screen.surf
     rect = screen.rect
-    if view == "e":
+    panel = P["Computer Display"]
+    mode = panel.computer_mode
+
+    if mode == "combat_enemy":
         fit_text(surf, "COMBAT STATUS REPORT - Enemy", [4, 4, rect.width - 8, 20], WHITE, 14)
 
         headers = [
@@ -898,7 +899,7 @@ def _draw_computer_combat_stats(screen, state, view):
 
         pygame.draw.rect(surf, FRAME_DIM, (4, 24, rect.width - 8, rect.height - 32), 1)
 
-    elif view == "k":
+    elif mode == "combat_krellan":
         fit_text(surf, "COMBAT STATUS REPORT - Krellan Forces",
                  [4, 4, rect.width - 8, 20], WHITE, 14)
 
@@ -981,14 +982,19 @@ def _draw_computer_combat_stats(screen, state, view):
             row_y += 20
         pygame.draw.rect(surf, FRAME_DIM, (4, 24, rect.width - 8, rect.height - 32), 1)
 
-    enemy_box, krellan_box = _computer_combat_tab_rects(screen)
+    btn_width = rect.width // 6
+    btn_height = 24
+    y = panel.rect.height - 36
 
-    color = WHITE if view == "e" else GREY
+    enemy_box = pygame.Rect(0, y, btn_width, btn_height)
+    krellan_box = pygame.Rect(btn_width, y, btn_width, btn_height)
+
+    color = WHITE if mode == "combat_enemy" else GREY
     pygame.draw.rect(surf, color, enemy_box)
     pygame.draw.rect(surf, FRAME_DIM, enemy_box, 1)
     fit_text(surf, "Enemy [e]", [enemy_box.x + 5, enemy_box.y, enemy_box.width - 10, enemy_box.height],
              BLACK, 12)
-    color = WHITE if view == "k" else GREY
+    color = WHITE if mode == "combat_krellan" else GREY
     pygame.draw.rect(surf, color, krellan_box)
     pygame.draw.rect(surf, FRAME_DIM, krellan_box, 1)
     fit_text(surf, "Krellan [k]",
