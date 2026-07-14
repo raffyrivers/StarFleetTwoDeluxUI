@@ -159,7 +159,7 @@ def _build_navigation():
 def _build_navigation_data():
     panel = P["Navigation"]
     Display(panel, "nav readout", (192, 145), (2, 22), double_border=False)
-    Button(panel, (122, 62, 66, 18), "Evasive", text_size=12)
+    Button(panel, (122, 62, 66, 18), "Evasive", key=pygame.K_e, text_size=12)
     Button(panel, (126, 94, 28, 22), "<<", text_size=16)
     Button(panel, (160, 94, 28, 22), ">>", text_size=16)
 
@@ -208,25 +208,17 @@ class _Indicator:
 def _build_computer():
     panel = P["Computer Display"]
     panel.computer_mode = "default"
-
     menu = ["Combat Stats", "Information", "Landing Party", "Planets", "Star Systems",
             "Bases", "Intelligence", "Reference Lib", "Self-Destruct", "Special Services"]
     Display(panel, "options", (90, 250), (5, 5))
     Display(panel, "screen", (475, 250), (100, 5))
-
-    #footer buttons
-    #combat
-    panel.combat_view_buttons = []
-
-
 
     menu_x, menu_y, menu_w, menu_h, menu_gap = 8, 7, 84, 22, 3
     for i, label in enumerate(menu):
 
         if label == "Combat Stats":
             Button(panel,(menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h), label,group="computer_menu",
-                   on_toggle=lambda b, mode=label.lower(): setattr(panel,"computer_mode","combat_enemy" if b.active else "default"))
-
+                   on_toggle=lambda b, mode=label.lower(): setattr(panel,"computer_mode",mode if b.active else "default"))
 
         if label == "Information":
             Button(panel,(menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h),label,group="computer_menu",
@@ -710,7 +702,6 @@ def _draw_status_indicators(state):
 
 def _draw_computer(state):
     panel = P["Computer Display"]
-    state.computer_panel = panel
     options = panel.get("options")
     options.surf.fill(PANEL_BG)
     mode = panel.computer_mode
@@ -718,24 +709,19 @@ def _draw_computer(state):
     screen = panel.get("screen")
     screen.surf.fill(BLACK)
 
-    if mode == "combat_enemy" or mode == "combat_krellan":
-        _draw_computer_combat_stats(screen, state)
-
-    else:
-        panel.combat_view_buttons.clear()
+    if mode == "combat stats":
+        _draw_combat_stats(screen,state,"e")
     if mode == "star systems":
         _draw_star_systems(screen,state)
+
     if mode == "self-destruct":
         _draw_self_destruct_screen(screen,state)
 
 
-def _draw_computer_combat_stats(screen, state):
+def _draw_combat_stats(screen, state,view):
     surf = screen.surf
     rect = screen.rect
-    panel = P["Computer Display"]
-
-    state.computer_panel = panel
-    if panel.computer_mode == "combat_enemy":
+    if view == "e":
         fit_text(surf, "COMBAT STATUS REPORT - Enemy", [4, 4, rect.width - 8, 20], WHITE, 14)
 
         headers = [
@@ -814,11 +800,11 @@ def _draw_computer_combat_stats(screen, state):
 
         pygame.draw.rect(surf, FRAME_DIM, (4, 24, rect.width - 8, rect.height - 32), 1)
 
-
-    if panel.computer_mode == "combat_krellan":
-        fit_text(surf, "COMBAT STATUS REPORT - Krellan",
+    if view == "k":
+        fit_text(surf, "COMBAT STATUS REPORT - Krellan Forces",
                  [4, 4, rect.width - 8, 20], WHITE, 14)
 
+        # --- Column headers (same widths as Enemy screen) ---
         headers = [
             ("OBJECT", 70),
             ("REL POS", 50),
@@ -897,28 +883,6 @@ def _draw_computer_combat_stats(screen, state):
                 x += width
 
             row_y += 20
-
-    y = panel.rect.height - 40
-    enemy_box = pygame.Rect(20, y, 120, 24)
-    krellan_box = pygame.Rect(160, y, 140, 24)
-
-    # Enemy box
-    color = WHITE if panel.computer_mode == "combat_enemy" else GREY
-    pygame.draw.rect(surf, color, enemy_box)
-    fit_text(surf, "Enemy [e]", [enemy_box.x + 5, enemy_box.y, enemy_box.width - 10, enemy_box.height],
-             BLACK, 12)
-    # Krellan box
-    color = WHITE if panel.computer_mode == "combat_krellan" else GREY
-    pygame.draw.rect(surf, color, krellan_box)
-    fit_text(
-        surf,
-        "Krellan [k]",
-        [krellan_box.x + 5, krellan_box.y + 4, krellan_box.width - 10, krellan_box.height],
-        BLACK,
-        12
-    )
-
-
 
 def _draw_self_destruct_screen(screen, state):
     surf = screen.surf

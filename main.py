@@ -280,17 +280,9 @@ class Cockpit:
             st.change_space_velocity(-1)
         elif key == pygame.K_r:
             st.plot_course_to_target()
+        #to switch to krellan data in computer combat
+        # elif key == pygame.K_k:
 
-        # to switch to krellan data in computer combat
-        elif key == pygame.K_k:
-            panel = self.state.computer_panel
-            if panel.computer_mode == "combat_enemy":
-                panel.computer_mode = "combat_krellan"
-
-        elif key == pygame.K_e:
-            panel = self.state.computer_panel
-            if panel.computer_mode == "combat_krellan":
-                panel.computer_mode = "combat_enemy"
 
         elif key == pygame.K_LEFTBRACKET:
             st.set_nav_course(st.set_course - 15)
