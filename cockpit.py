@@ -283,6 +283,23 @@ def _build_engineering():
     Button(panel, (214, 6, 88, 17), "Operations", key=pygame.K_q, group="probe", text_size=12)
     Button(panel, (306, 6, 78, 17), "Launch", key=pygame.K_w, group="probe", text_size=12)
 
+    disp = panel.get("velocity")
+    base_x = 386 + 6
+    top = 25 + 122
+    row_h = 13
+    row_gap = 1
+    left_w = 76
+    right_x = base_x + 148
+    right_w = 60
+    for i, name in enumerate(("CMPTR", "S/L ENG", "HYP ENG", "SRS", "LRS", "SHD CTL")):
+        Button(panel, (base_x + 4, top + i * (row_h + row_gap), left_w, row_h),
+               name, group="ship_damage", text_size=9)
+    for i, name in enumerate(("TRP CTL", "PHS CTL", "TELEPRT", "COM CTL", "TRAC BM", "PLS")):
+        Button(panel, (right_x, top + i * (row_h + row_gap), right_w, row_h),
+               name, group="ship_damage", text_size=9)
+    Button(panel, (base_x + 80, top, 66, 6 * row_h + 5 * row_gap),
+           "HULL", group="ship_damage", text_size=10)
+
 
 def _build_communication():
     panel = P["Communication Console"]
@@ -1129,6 +1146,7 @@ def _draw_data(state):
 
 def _draw_engineering(state):
     panel = P["Engineering Console"]
+    _sync_damage_buttons(panel, state)
     _draw_probes(panel, state)
     _draw_damage(panel, state)
     _draw_energy(panel, state)
@@ -1181,60 +1199,31 @@ def _draw_damage(panel, state):
     disp = panel.get("velocity")  # rightmost display hosts the dynamic ship
     disp.surf.fill(BLACK)
     base_x = 6
-    velocity_rail = pygame.Rect(disp.rect.width - 32, 18, 28, disp.rect.height - 36)
-    img = pygame.transform.smoothscale(asset("shipdmg.png"), (130, 95))
-    disp.surf.blit(img, (base_x + 4, 30))
-    hull_shape = [(44, 78), (78, 54), (138, 44), (196, 62), (222, 80),
-                  (196, 98), (138, 108), (78, 96)]
-    pygame.draw.polygon(disp.surf, (35, 178, 45), hull_shape)
-    pygame.draw.polygon(disp.surf, (12, 85, 20), hull_shape, 2)
-    for y in range(56, 102, 8):
-        pygame.draw.line(disp.surf, (95, 245, 95), (72, y), (202, y), 1)
-    pygame.draw.rect(disp.surf, (20, 20, 20), (18, 72, 44, 16))
-    pygame.draw.rect(disp.surf, FRAME_DIM, (18, 72, 44, 16), 1)
-    systems_left = ["CMPTR", "S/L ENG", "HYP ENG", "SRS", "LRS", "SHD CTL"]
-    systems_right = ["TRP CTL", "PHS CTL", "TELEPRT", "COM CTL", "TRAC BM", "PLS"]
+    ship_box = pygame.Rect(base_x + 2, 24, 142, 108)
+    ship_img = asset("shipdmg.png")
+    ship_mask = pygame.mask.from_surface(ship_img)
+    ship_rects = ship_mask.get_bounding_rects()
+    if ship_rects:
+        ship_rect = ship_rects[0]
+        ship_crop = pygame.Surface((ship_rect.width, ship_rect.height), pygame.SRCALPHA)
+        ship_crop.blit(ship_img, (0, 0), ship_rect)
+        scale = min(ship_box.width / ship_rect.width, ship_box.height / ship_rect.height)
+        ship_size = (max(1, int(ship_rect.width * scale)), max(1, int(ship_rect.height * scale)))
+        ship_scaled = pygame.transform.scale(ship_crop, ship_size)
+        ship_pos = ship_box.move((ship_box.width - ship_size[0]) // 2, (ship_box.height - ship_size[1]) // 2)
+        disp.surf.blit(ship_scaled, ship_pos)
 
-    def system_color(name):
-        health = state.damage.system_health.get(name, state.hull_pct)
-        if health <= 0:
-            return (40, 40, 40), WHITE
-        if health < 40:
-            return RED, WHITE
-        if health < 75:
-            return YELLOW, BLACK
-        return GREEN, BLACK
 
-    def system_label(rect, name, fg):
-        label = font(9, True).render(name, True, color(fg))
-        label_rect = label.get_rect()
-        label_rect.left = rect.left + 3
-        label_rect.centery = rect.centery
-        disp.surf.blit(label, label_rect)
-
-    top = 122
-    row_h = 13
-    row_gap = 1
-    left_w = 76
-    right_x = base_x + 150
-    right_w = velocity_rail.x - right_x - 2
-    for i, name in enumerate(systems_left):
-        rect = pygame.Rect(base_x + 4, top + i * (row_h + row_gap), left_w, row_h)
-        fg, text_fg = system_color(name)
-        pygame.draw.rect(disp.surf, fg, rect)
-        pygame.draw.rect(disp.surf, FRAME_DIM, rect, 1)
-        system_label(rect, name, text_fg)
-    for i, name in enumerate(systems_right):
-        rect = pygame.Rect(right_x, top + i * (row_h + row_gap), right_w, row_h)
-        fg, text_fg = system_color(name)
-        pygame.draw.rect(disp.surf, fg, rect)
-        pygame.draw.rect(disp.surf, FRAME_DIM, rect, 1)
-        system_label(rect, name, text_fg)
-    hull = pygame.Rect(base_x + 82, top, 66, len(systems_left) * row_h + (len(systems_left) - 1) * row_gap)
-    fg, text_fg = system_color("HULL")
-    pygame.draw.rect(disp.surf, fg, hull)
-    pygame.draw.rect(disp.surf, FRAME_DIM, hull, 1)
-    fit_text(disp.surf, f"HULL {state.hull_pct}%", hull, text_fg, 10)
+def _sync_damage_buttons(panel, state):
+    phase_by_health = {100: 0, 65: 1, 30: 2, 0: 3}
+    for button in panel.elements:
+        if not isinstance(button, Button) or button.group != "ship_damage":
+            continue
+        if button.label.startswith("HULL"):
+            button.label = f"HULL {state.hull_pct}%"
+            button.active = phase_by_health.get(state.hull_pct, 0)
+        else:
+            button.active = phase_by_health.get(state.damage.system_health.get(button.label, 100), 0)
 
 
 def _draw_energy(panel, state):

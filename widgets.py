@@ -4,7 +4,7 @@ import pygame
 import core
 from core import (BLACK, SHELL_BG, PANEL_BG, FRAME, FRAME_DIM, BEVEL_LIGHT, BEVEL_DARK,
                   BUTTON_FACE, BUTTON_ACTIVE, BUTTON_HOVER, CYAN, GREEN, RED,
-                  YELLOW, GREY, color, font, fit_text, text_line)
+                  YELLOW, GREY, WHITE, color, font, fit_text, text_line)
 
 # Every button registers here so the main loop can hit-test mouse clicks.
 BUTTONS = []
@@ -73,6 +73,8 @@ class Panel:
 class Button:
     """A bevelled, clickable button. Click and key both call on_toggle."""
 
+    DAMAGE_FACE = [GREEN, YELLOW, RED, GREY]
+
     def __init__(self, panel, rect, label, key=None, group=None,
                  active=False, momentary=False, text_size=11, on_toggle=None):
         self.panel = panel
@@ -98,24 +100,31 @@ class Button:
 
     def draw(self):
         rect = self.local
-        if self.active:
-            face = BUTTON_ACTIVE
-        elif self.hover:
-            face = BUTTON_HOVER
+        if self.group == "ship_damage":
+            phase = int(self.active) % len(self.DAMAGE_FACE)
+            face = self.DAMAGE_FACE[phase]
+            text_color = BLACK if face in (GREEN, YELLOW) else WHITE
         else:
-            face = BUTTON_FACE
+            if self.active:
+                face = BUTTON_ACTIVE
+            elif self.hover:
+                face = BUTTON_HOVER
+            else:
+                face = BUTTON_FACE
+            text_color = BLACK
         pygame.draw.rect(self.panel.surf, face, rect)
         pygame.draw.line(self.panel.surf, BEVEL_LIGHT, rect.topleft, rect.topright)
         pygame.draw.line(self.panel.surf, BEVEL_LIGHT, rect.topleft, rect.bottomleft)
         pygame.draw.line(self.panel.surf, BEVEL_DARK, rect.bottomleft, rect.bottomright)
         pygame.draw.line(self.panel.surf, BEVEL_DARK, rect.topright, rect.bottomright)
-        text_color = BLACK if self.active or face == BUTTON_FACE else BLACK
         if self.label:
             fit_text(self.panel.surf, self.label, rect, text_color, self.text_size)
 
     def activate(self):
         """Toggle (or set, for grouped radios) and notify the handler."""
-        if self.group is not None:
+        if self.group == "ship_damage":
+            self.active = (int(self.active) + 1) % len(self.DAMAGE_FACE)
+        elif self.group is not None:
             for other in BUTTONS:
                 if other.group == self.group and other is not self:
                     other.active = False
