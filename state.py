@@ -336,6 +336,23 @@ class ShipState:
         self.damage.set_level(level)
         self.add_message("Damage Control", f"hull condition level {self.damage.level}")
 
+    def cycle_damage_system(self, name):
+        levels = [100, 65, 30, 0]
+        if name.startswith("HULL"):
+            current = self.damage.hull_pct
+            if current not in levels:
+                current = 100
+        else:
+            current = self.damage.system_health.get(name, 100)
+            if current not in levels:
+                current = 100
+        next_level = levels[(levels.index(current) + 1) % len(levels)]
+        if name.startswith("HULL"):
+            self._set_ship_hull_pct(next_level)
+        else:
+            self.damage.system_health[name] = next_level
+        self.add_message("Damage Control", f"{name} damage set to {next_level}%")
+
     def change_hyper_velocity(self, delta):
         if self.damage.system_health["HYP ENG"] <= 0:
             self.add_message("Engineering", "hyperdrive inoperative")

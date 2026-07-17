@@ -170,6 +170,17 @@ class GameplayStateTests(unittest.TestCase):
         self.assertLess(state.hull_pct, hull)
         self.assertTrue(any(v < 100 for v in state.damage.system_health.values()))
 
+    def test_ship_damage_button_cycle_changes_system_health_levels(self):
+        state = ShipState()
+        state.cycle_damage_system("CMPTR")
+        self.assertEqual(state.damage.system_health["CMPTR"], 65)
+        state.cycle_damage_system("CMPTR")
+        self.assertEqual(state.damage.system_health["CMPTR"], 30)
+        state.cycle_damage_system("CMPTR")
+        self.assertEqual(state.damage.system_health["CMPTR"], 0)
+        state.cycle_damage_system("CMPTR")
+        self.assertEqual(state.damage.system_health["CMPTR"], 100)
+
     def test_probe_launch_and_boarding_gate(self):
         state = ShipState()
         loaded = state.probe_loaded

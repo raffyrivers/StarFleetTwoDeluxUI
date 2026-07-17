@@ -144,7 +144,7 @@ class Cockpit:
             self.state.set_nav_evasive(button.active)
         elif button.label == "<<":
             self.state.adjust_nav_sideslip(-1)
-            button.active = False
+            button.active = False                      
         elif button.label == ">>":
             self.state.adjust_nav_sideslip(1)
             button.active = False
@@ -190,6 +190,8 @@ class Cockpit:
         if button.label == "Launch":
             self.state.launch_probe()
             button.active = False
+        elif button.group == "ship_damage":
+            self.state.cycle_damage_system(button.label)
 
     def _handle_science_button(self, button):
         if button.label in ("SRS", "LRS"):
