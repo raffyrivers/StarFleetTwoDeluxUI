@@ -393,9 +393,9 @@ def _draw_boarding_panel(panel, state):
     ctx = state.boarding_context()
 
     img_h = internal.size[1] - 40
-    img_w = internal.size[0]
+    img_w = internal.size[0] - 12
     img = pygame.transform.smoothscale(panel.boarding_img, (img_w, img_h))
-    internal.surf.blit(img, (0,0))
+    internal.surf.blit(img, (6, 0))
 
     # --- table under the image ---
     list_y = img_h - 12  # adjust vertical position
