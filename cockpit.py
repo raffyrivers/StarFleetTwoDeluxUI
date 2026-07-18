@@ -330,13 +330,14 @@ def _build_combat():
     for b in panel.elements:
         if isinstance(b, Button) and b.group and b.group.startswith("cmb_"):
             b.group = None
-    # Shield mode radio buttons sit on the shields sub-panel.
-    Button(panel, (493, 304, 74, 16), "Auto", key=pygame.K_m, group="shield", text_size=10)
-    Button(panel, (573, 304, 74, 16), "Manual", key=pygame.K_COMMA, group="shield",
+    # Shield modes form a compact two-by-two control group below the shield ring.
+    # The extra height keeps the longest label legible without touching its frame.
+    Button(panel, (491, 299, 75, 19), "Auto", key=pygame.K_m, group="shield", text_size=10)
+    Button(panel, (570, 299, 75, 19), "Manual", key=pygame.K_COMMA, group="shield",
            active=True, text_size=10)
-    Button(panel, (493, 322, 74, 16), "Battle Entry", key=pygame.K_PERIOD,
+    Button(panel, (491, 320, 75, 19), "Battle Entry", key=pygame.K_PERIOD,
            group="shield", text_size=10)
-    Button(panel, (573, 322, 74, 16), "Maximum", key=pygame.K_SLASH,
+    Button(panel, (570, 320, 75, 19), "Maximum", key=pygame.K_SLASH,
            group="shield", text_size=10)
     for i, name in enumerate(("Phaser", "Trp1", "Trp2", "ObltrPd")):
         Button(panel, (493 + i * 39, 55, 37, 18), name, group="combat_weapon",
@@ -1484,25 +1485,92 @@ def _draw_shields(panel, state):
     box = pygame.Rect(485, 172, 165, 170)
     pygame.draw.rect(panel.surf, PANEL_BG, box)
     pygame.draw.rect(panel.surf, GREY, box, 2)
-    fit_text(panel.surf, "Shields", [box.x + 4, box.y + 2, 80, 14], CYAN, 11, align="left")
-    center = (box.centerx, box.y + 70)
-    arcs = [(225, 315), (135, 225), (45, 135), (315, 45)]
+
+    # Keep the header separate from the diagram so neither the title nor the AAS
+    # state competes with sector values for space.
+    fit_text(panel.surf, "Shields", [box.x + 7, box.y + 3, 75, 16], BLACK, 13,
+             align="left")
+    aas = pygame.Rect(box.right - 42, box.y + 4, 35, 15)
+    pygame.draw.rect(panel.surf, GREEN if state.aas_enabled else BUTTON_FACE, aas)
+    pygame.draw.rect(panel.surf, BLACK, aas, 1)
+    fit_text(panel.surf, "AAS", aas.inflate(-4, -1), BLACK, 10)
+
+    center = (box.centerx, box.y + 72)
+    outer_radius = 51
+    inner_radius = 34
+    pygame.draw.circle(panel.surf, BLACK, center, outer_radius)
+
+    # Small gaps make the four facings distinct at this compact scale.  Intensity
+    # communicates remaining strength while red remains reserved for a depleted
+    # facing, matching the visual language used elsewhere in the cockpit.
+    arcs = [(228, 312), (138, 222), (48, 132), (318, 402)]
     for idx, (start, end) in enumerate(arcs):
         strength = state.shield_strength[idx] if state.shields_up else 0
-        col = GREEN if strength >= 500 else (YELLOW if strength > 0 else RED)
-        label = f"{idx + 1}:{strength}"
-        _arc_quadrant(panel.surf, center, 38, 56, start, end, col)
-        mid = math.radians((start + (end if end > start else end + 360)) / 2)
-        lx = center[0] + int(47 * math.cos(mid))
-        ly = center[1] + int(47 * math.sin(mid))
-        text_line(panel.surf, label, (lx, ly), BLACK, 9, align="center")
-    panel.surf.blit(pygame.transform.smoothscale(asset("babaaa 2.png"), (28, 40)),
-                    (center[0] - 14, center[1] - 20))
-    text_line(panel.surf, "Shield Mode", (box.x + 6, box.y + 118), CYAN, 10)
-    fit_text(panel.surf, state.shield_policy, [box.x + 70, box.y + 111, 80, 14],
-             GREEN if state.shields_up else RED, 10, align="left")
-    fit_text(panel.surf, f"AAS: {'Y' if state.aas_enabled else 'N'}",
-             [box.x + 6, box.y + 132, 70, 13], CYAN, 9, align="left")
+        if strength <= 0:
+            sector_color = RED
+        elif strength <= 500:
+            sector_color = (35, 125, 38)
+        elif strength <= 1000:
+            sector_color = (42, 185, 43)
+        else:
+            sector_color = GREEN
+        _arc_quadrant(panel.surf, center, inner_radius, outer_radius,
+                      start, end, sector_color)
+
+    pygame.draw.circle(panel.surf, BLACK, center, outer_radius, 2)
+    pygame.draw.circle(panel.surf, BLACK, center, inner_radius)
+
+    # Horizontal values fit the broad top/bottom sectors.  Side values rotate to
+    # follow their narrow sectors instead of shrinking or leaking into the hub.
+    horizontal_value_boxes = {
+        0: pygame.Rect(center[0] - 24, center[1] - 49, 48, 14),
+        2: pygame.Rect(center[0] - 24, center[1] + 35, 48, 14),
+    }
+    vertical_value_boxes = {
+        1: pygame.Rect(center[0] - 49, center[1] - 22, 14, 44),
+        3: pygame.Rect(center[0] + 35, center[1] - 22, 14, 44),
+    }
+    sector_boxes = [
+        pygame.Rect(center[0] - 14, center[1] - 33, 28, 14),
+        pygame.Rect(center[0] - 34, center[1] - 7, 23, 14),
+        pygame.Rect(center[0] - 14, center[1] + 19, 28, 14),
+        pygame.Rect(center[0] + 11, center[1] - 7, 23, 14),
+    ]
+    for idx, sector_box in enumerate(sector_boxes):
+        strength = state.shield_strength[idx] if state.shields_up else 0
+        # Black is clearest on the two brighter greens; white is retained for
+        # dark green and red sectors.  The numeric value also makes state clear
+        # without relying on color alone.
+        value_color = BLACK if strength > 500 else WHITE
+        if idx in horizontal_value_boxes:
+            fit_text(panel.surf, strength, horizontal_value_boxes[idx],
+                     value_color, 12, align="center")
+        else:
+            angle = 90 if idx == 1 else -90
+            _draw_rotated_text(panel.surf, strength, vertical_value_boxes[idx],
+                               value_color, 12, angle)
+        fit_text(panel.surf, f"S{idx + 1}", sector_box, WHITE, 11,
+                 align="center")
+
+    ship = pygame.transform.smoothscale(asset("babaaa 2.png"), (24, 34))
+    ship.fill((20, 45, 16), special_flags=pygame.BLEND_RGB_ADD)
+    panel.surf.blit(ship, (center[0] - 12, center[1] - 17))
+
+
+def _draw_rotated_text(surface, text, rect, fg, start_size, angle):
+    """Fit and center a rotated label without allowing it outside ``rect``."""
+    rect = pygame.Rect(rect)
+    label = None
+    for size in range(start_size, 6, -1):
+        candidate = font(size, True).render(str(text), True, color(fg))
+        candidate = pygame.transform.rotate(candidate, angle)
+        if candidate.get_width() <= rect.width and candidate.get_height() <= rect.height:
+            label = candidate
+            break
+    if label is None:
+        label = pygame.transform.rotate(
+            font(6, True).render(str(text), True, color(fg)), angle)
+    surface.blit(label, label.get_rect(center=rect.center))
 
 
 def _draw_fire_controls(panel, state):
