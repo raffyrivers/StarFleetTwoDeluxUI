@@ -712,9 +712,48 @@ def _draw_star_map(state):
         pygame.draw.rect(disp.surf, (26, 26, 26), (0, 0, disp.rect.width, 14))
         for i, label in enumerate(("0", "5", "10", "15", "20", "25", "30", "35")):
             fit_text(disp.surf, label, [8 + i * 53, 0, 26, 13], CYAN, 9)
-        ship_x = max(6, min(disp.rect.width - 8, int(state.region_x / 35 * disp.rect.width)))
-        ship_y = max(18, min(disp.rect.height - 8, int(state.region_y / 20 * disp.rect.height)))
-        pygame.draw.rect(disp.surf, MAGENTA, (ship_x - 6, ship_y - 6, 12, 12), 2)
+
+    _draw_star_map_ship(disp.surf, state)
+
+
+def _draw_star_map_ship(surface, state):
+    """Draw the player ship at its continuous galactic position and heading."""
+    # Reserve enough room for the glyph and its label at every map edge.
+    plot = pygame.Rect(12, 25, surface.get_width() - 24, surface.get_height() - 38)
+    galactic_x, galactic_y = state.galactic_position
+    norm_x = max(0.0, min(1.0, galactic_x / 35.0))
+    norm_y = max(0.0, min(1.0, galactic_y / 20.0))
+    ship_x = plot.left + round(norm_x * (plot.width - 1))
+    ship_y = plot.top + round(norm_y * (plot.height - 1))
+
+    heading = math.radians(state.actual_heading - 90)
+    direction = (math.cos(heading), math.sin(heading))
+    if state.hyper_velocity or state.space_velocity:
+        wake_start = (ship_x - round(direction[0] * 15),
+                      ship_y - round(direction[1] * 15))
+        wake_end = (ship_x - round(direction[0] * 8),
+                    ship_y - round(direction[1] * 8))
+        pygame.draw.line(surface, CYAN, wake_start, wake_end, 2)
+
+    points = [
+        (ship_x + round(math.cos(heading) * 8),
+         ship_y + round(math.sin(heading) * 8)),
+        (ship_x + round(math.cos(heading + 2.45) * 6),
+         ship_y + round(math.sin(heading + 2.45) * 6)),
+        (ship_x + round(math.cos(heading - 2.45) * 6),
+         ship_y + round(math.sin(heading - 2.45) * 6)),
+    ]
+    pygame.draw.circle(surface, BLACK, (ship_x, ship_y), 10)
+    pygame.draw.circle(surface, CYAN, (ship_x, ship_y), 10, 1)
+    pygame.draw.polygon(surface, GREEN, points)
+    pygame.draw.polygon(surface, WHITE, points, 1)
+
+    label = pygame.Rect(0, 0, 34, 10)
+    label.centerx = ship_x
+    label.bottom = ship_y - 11 if ship_y >= plot.top + 18 else ship_y + 21
+    label.clamp_ip(surface.get_rect().inflate(-4, -4))
+    pygame.draw.rect(surface, BLACK, label)
+    fit_text(surface, "SHIP", label, GREEN, 8, align="center")
 
 
 def _draw_status_indicators(state):
