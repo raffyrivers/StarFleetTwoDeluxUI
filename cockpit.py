@@ -398,7 +398,7 @@ def _draw_boarding_panel(panel, state):
     internal.surf.blit(img, (6, 0))
 
     # --- table under the image ---
-    list_y = img_h - 12  # adjust vertical position
+    list_y = img_h - 18  # keep the final row clear of the recessed border
     label_x = 12  # red label position
     value_x = 90  # green value position
 
@@ -1239,7 +1239,7 @@ def _draw_damage(panel, state):
     disp = panel.get("velocity")  # rightmost display hosts the dynamic ship
     disp.surf.fill(BLACK)
     base_x = 6
-    ship_box = pygame.Rect(base_x + 2, 24, 142, 108)
+    ship_box = pygame.Rect(base_x + 2, 18, 142, 100)
     ship_img = asset("shipdmg.png")
     ship_mask = pygame.mask.from_surface(ship_img)
     ship_rects = ship_mask.get_bounding_rects()
@@ -1247,11 +1247,22 @@ def _draw_damage(panel, state):
         ship_rect = ship_rects[0]
         ship_crop = pygame.Surface((ship_rect.width, ship_rect.height), pygame.SRCALPHA)
         ship_crop.blit(ship_img, (0, 0), ship_rect)
-        scale = min(ship_box.width / ship_rect.width, ship_box.height / ship_rect.height)
-        ship_size = (max(1, int(ship_rect.width * scale)), max(1, int(ship_rect.height * scale)))
-        ship_scaled = pygame.transform.scale(ship_crop, ship_size)
-        ship_pos = ship_box.move((ship_box.width - ship_size[0]) // 2, (ship_box.height - ship_size[1]) // 2)
-        disp.surf.blit(ship_scaled, ship_pos)
+        split_y = min(51, ship_rect.height - 1)
+        gap = 8
+        scale = min(ship_box.width / ship_rect.width,
+                    (ship_box.height - gap) / ship_rect.height)
+        ship_w = max(1, int(ship_rect.width * scale))
+        top_h = max(1, int(split_y * scale))
+        bottom_h = max(1, int((ship_rect.height - split_y) * scale))
+        content_y = ship_box.y + (ship_box.height - top_h - gap - bottom_h) // 2
+        content_x = ship_box.x + (ship_box.width - ship_w) // 2
+        top = pygame.transform.scale(ship_crop.subsurface(0, 0, ship_rect.width, split_y),
+                                     (ship_w, top_h))
+        bottom = pygame.transform.scale(
+            ship_crop.subsurface(0, split_y, ship_rect.width, ship_rect.height - split_y),
+            (ship_w, bottom_h))
+        disp.surf.blit(top, (content_x, content_y))
+        disp.surf.blit(bottom, (content_x, content_y + top_h + gap))
 
 
 def _sync_damage_buttons(panel, state):
