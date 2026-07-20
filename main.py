@@ -283,12 +283,12 @@ class Cockpit:
         # to switch to krellan and enemy data in computer combat
         elif key == pygame.K_k:
             panel = self.state.computer_panel
-            if panel.computer_mode == "combat_enemy":
-                panel.computer_mode = "combat_krellan"
+            if panel.primary_mode == "Combat Status":
+                panel.sub_mode = "combat_krellan"
         elif key == pygame.K_e:
             panel = self.state.computer_panel
-            if panel.computer_mode == "combat_krellan":
-                panel.computer_mode = "combat_enemy"
+            if panel.sub_mode == "combat_krellan":
+                panel.sub_mode = "combat_enemy"
         elif key == pygame.K_LEFTBRACKET:
             st.set_nav_course(st.set_course - 15)
         elif key == pygame.K_RIGHTBRACKET:
