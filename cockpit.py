@@ -80,6 +80,27 @@ def table(surface, headers, rows, x, y, widths, line_h=14, size=10, column_lines
 
 # --- panel construction -----------------------------------------------------
 
+#only works for computer display
+def clear_btn_group(panel,group):
+    # for reference
+    # panel.combat_btn = []
+    # panel.info_btn = []
+    # panel.special_serv_btn = []
+    # panel.intell_btn = []
+
+    toDelete = []
+    if group == "main_menu":
+        toDelete.extend(panel.main_menu_btn)
+    elif group == "combat_sub":
+        toDelete.extend(panel.combat_btn)
+    elif group == "info_sub":
+        toDelete.extend(panel.info_btn)
+
+    for d in toDelete:
+        if d in panel.elements:
+            panel.elements.remove(d)
+
+
 def build():
     P.clear()
     layout = [
@@ -237,21 +258,20 @@ def _build_computer():
 
             if label == "Combat Status":
                 panel.main_menu_btn.append(Button(panel,(menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h), label,group="main_menu",
-                       on_toggle=lambda b, mode=label.lower(): setattr(panel,"primary_mode","Combat Status" if b.active else "default")))
+                       on_toggle=lambda b, mode=label.lower(): setattr(panel,"primary_mode",mode if b.active else None)))
 
-                panel.sub_mode = "combat_enemy"
 
             if label == "Information":
                 panel.main_menu_btn.append(Button(panel,(menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h),label,group="main_menu",
-                       on_toggle=lambda b, mode=label.lower(): setattr(panel,"primary_mode",mode if b.active else "default")))
+                       on_toggle=lambda b, mode=label.lower(): setattr(panel,"primary_mode",mode if b.active else None)))
 
             if label == "Special Services":
                 panel.main_menu_btn.append(Button(panel,(menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h),label,group="main_menu",
-                       on_toggle=lambda b, mode=label.lower(): setattr(panel,"primary_mode",mode if b.active else "default")))
+                       on_toggle=lambda b, mode=label.lower(): setattr(panel,"primary_mode",mode if b.active else None)))
 
             if label == "Self-Destruct":
                 panel.main_menu_btn.append(Button(panel,(menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h),label,group="main_menu",
-                       on_toggle=lambda b, mode=label.lower(): setattr(panel,"primary_mode",mode if b.active else "default")))
+                       on_toggle=lambda b, mode=label.lower(): setattr(panel,"primary_mode",mode if b.active else None)))
 
     # initalize buttons
 
@@ -260,17 +280,25 @@ def _build_computer():
     panel.special_serv_btn = []
     panel.intell_btn = []
 
-
     for c, subLvl in enumerate(sub_labels["Combat Status"]):
-        panel.combat_btn.append(Button(panel, (x, y_start + c * (h + gap), w, h), subLvl, group="combat_sub",
-        on_toggle=lambda b, mode=subLvl.lower(): setattr(panel, "sub_mode",mode if b.active else None)))
+        if subLvl == "Enemy":
+            panel.combat_btn.append(Button(panel, (x, y_start + c * (h + gap), w, h), subLvl,key=pygame.K_e,group="combat_sub", active=True,
+            on_toggle=lambda b, mode=subLvl.lower(): setattr(panel,"sub_mode","combat_enemy" if b.active else None)))
+
+
+        else:
+            panel.combat_btn.append(Button(panel, (x, y_start + c * (h + gap), w, h), subLvl, key=pygame.K_k, group="combat_sub",
+            on_toggle=lambda b, mode=subLvl.lower(): setattr(panel, "sub_mode","combat_krellan" if b.active else None)))
 
     for i, subLvl in enumerate(sub_labels["Information"]):
         panel.info_btn.append(Button(panel,(x, y_start + i * (h + gap), w, h), subLvl, group="info_sub",
-        on_toggle=lambda b, mode= subLvl.lower(): setattr(panel,"sub_mode", mode if b.active else None)))
+        on_toggle=lambda b, mode= subLvl.lower(): setattr(panel,"sub_mode", mode if b.active else "information")))
 
     #---------------- append buttons from panel ---------------------
 
+    for m in panel.main_menu_btn:
+        if m in panel.elements:
+            panel.elements.remove(m)
 
     for b in panel.combat_btn:
         if b in panel.elements:
@@ -724,11 +752,7 @@ def _draw_status_indicators(state):
     pygame.draw.rect(panel.surf, FRAME_DIM, panel.lbl_distance, 1)
     fit_text(panel.surf, f"{state.nav_distance:.1f} Ly", panel.lbl_distance, GREEN, 12)
 
-def clear_btn_group(panel,group_name):
-    for e in panel.elements:
-        if e is Button:
-            if e.group == group_name:
-                panel.elements.remove(e)
+
 
 def _draw_computer(state):
     panel = P["Computer Display"]
@@ -739,25 +763,38 @@ def _draw_computer(state):
     prime_mode = panel.primary_mode
     sub_mode = panel.sub_mode
     state.computer_panel = panel
+    # to_switch = prime_mode
 
     screen = panel.get("screen")
     screen.surf.fill(BLACK)
 
     #if not in default mode, has the main buttons, once primary_mode != None, it clears the main_menu buttons from panel and draws the mode_specific ones
 
-    if prime_mode != None and sub_mode != None:
-        clear_btn_group(panel, "main_menu")
-        if prime_mode == "Combat Status":
-            _draw_computer_combat_stats(screen, state)
-        elif prime_mode == "star systems":
-            _draw_star_systems(screen,state)
-        elif prime_mode == "self-destruct":
-            _draw_self_destruct_screen(screen,state)
-        # else:
-        #     _draw_computer_database_page(screen, state, mode)
+    if prime_mode == None:
+        _draw_computer_landing(screen, state)
+        for m in panel.main_menu_btn:
+            if not (m in panel.elements):
+                panel.elements.append(m)
+                m.draw()
 
     else:
-        _draw_computer_landing(screen, state)
+        clear_btn_group(panel,"main_menu")
+
+    if prime_mode == "combat status":
+        _draw_computer_combat_stats(screen, state)
+        for c in panel.combat_btn:
+            if c not in panel.elements:
+                panel.elements.append(c)
+                c.draw()
+
+
+    else:
+        clear_btn_group(panel,"combat_sub")
+
+        if prime_mode == "Information":
+            _draw_computer_database_page(screen, state)
+
+        # clear_btn_group(panel, prime_mode)
 
 
 def _draw_computer_landing(screen, state):
@@ -787,28 +824,27 @@ def _draw_computer_landing(screen, state):
             fit_text(surf, label, [box.x + 10, y, 70, 14], CYAN, 10, align="left")
             fit_text(surf, value, [box.x + 82, y, box.w - 92, 14], fg, 10, align="left")
 
-    # modules = [
-    #     ("Combat Stats", "enemy and Krellan reports"),
-    #     ("Information", "ship records"),
-    #     ("Landing Party", "troop status"),
-    #     ("Planets", "survey files"),
-    #     ("Star Systems", "regional database"),
-    #     ("Bases", "installation records"),
-    #     ("Intelligence", "enemy data"),
-    #     ("Reference Lib", "manual index"),
-    # ]
-    # fit_text(surf, "DATABASE CATALOG", [18, 150, rect.width - 36, 15], WHITE, 11, align="left")
-    # for i, (name, detail) in enumerate(modules):
-    #     col = i % 2
-    #     row = i // 2
-    #     x = 18 + col * 224
-    #     y = 171 + row * 16
-    #     fit_text(surf, name, [x, y, 94, 13], GREEN, 9, align="left")
-    #     fit_text(surf, detail, [x + 100, y, 112, 13], CYAN, 8, align="left")
-    #
-    # footer = f"Contacts {len(state.scanner_contacts())}   Torpedoes {state.torpedoes}   Prisoners {state.prisoners}"
-    # fit_text(surf, footer, [18, rect.height - 19, rect.width - 36, 13], YELLOW, 9, align="center")
-    #
+    modules = [
+        ("Combat Stats", "enemy and Krellan reports"),
+        ("Information", "ship records"),
+        ("Landing Party", "troop status"),
+        ("Planets", "survey files"),
+        ("Star Systems", "regional database"),
+        ("Bases", "installation records"),
+        ("Intelligence", "enemy data"),
+        ("Reference Lib", "manual index"),
+    ]
+    fit_text(surf, "DATABASE CATALOG", [18, 150, rect.width - 36, 15], WHITE, 11, align="left")
+    for i, (name, detail) in enumerate(modules):
+        col = i % 2
+        row = i // 2
+        x = 18 + col * 224
+        y = 171 + row * 16
+        fit_text(surf, name, [x, y, 94, 13], GREEN, 9, align="left")
+        fit_text(surf, detail, [x + 100, y, 112, 13], CYAN, 8, align="left")
+
+    footer = f"Contacts {len(state.scanner_contacts())}   Torpedoes {state.torpedoes}   Prisoners {state.prisoners}"
+    fit_text(surf, footer, [18, rect.height - 19, rect.width - 36, 13], YELLOW, 9, align="center")
 
 def _draw_computer_database_page(screen, state, mode):
     surf = screen.surf
@@ -839,28 +875,15 @@ def _draw_computer_database_page(screen, state, mode):
         fit_text(surf, value, box.inflate(-8, -2), GREEN, 11, align="left")
         y += 30
 
-#holds the main menu buttons
-def _draw_computer_main(panel,screen):
-    mm = panel.MAIN_MENU
-    for m in mm:
-        if not (mm in panel.elements):
-            panel.elements.append(m)
-
-
 #holds the combat buttons
 def _draw_computer_combat_stats(screen, state):
+
     surf = screen.surf
     rect = screen.rect
     panel = P["Computer Display"]
 
     sub_mode = panel.sub_mode
     prime_mode = panel.primary_mode
-
-    #menu
-    for c in panel.combat_btn:
-        if not(c in panel.elements):
-            panel.elements.append(c)
-
 
     #screen
     if sub_mode == "combat_enemy":
