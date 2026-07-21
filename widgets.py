@@ -115,15 +115,20 @@ class Button:
 
     def activate(self):
         """Toggle (or set, for grouped radios) and notify the handler."""
-        if self.group is not None:
-            for other in BUTTONS:
-                if other.group == self.group and other is not self:
-                    other.active = False
-            self.active = True if not self.momentary else self.active
+
+        if self not in self.panel.elements:
+            return
         else:
-            self.active = not self.active
-        if self.on_toggle:
-            self.on_toggle(self)
+
+            if self.group is not None:
+                for other in BUTTONS:
+                    if other.group == self.group and other is not self:
+                        other.active = False
+                self.active = True if not self.momentary else self.active
+            else:
+                self.active = not self.active
+            if self.on_toggle:
+                self.on_toggle(self)
 
 
 class Text:

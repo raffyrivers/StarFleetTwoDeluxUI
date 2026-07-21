@@ -234,6 +234,7 @@ def _build_computer():
 
     MAIN_MENU = ["Combat Status", "Information", "Special Services", "Self-Destruct"]
     panel.main_menu_btn = []
+    panel.back_btn = []
     Display(panel, "options", (90, 250), (5, 5))
     Display(panel, "screen", (475, 250), (100, 5))
 
@@ -243,7 +244,9 @@ def _build_computer():
     y_start = 10
     w = 80
     h = 20
-    gap = 4
+    gap = 3
+
+
 
     sub_labels = {
         "Combat Status": ["Enemy", "Krellan"],
@@ -282,7 +285,7 @@ def _build_computer():
 
     for c, subLvl in enumerate(sub_labels["Combat Status"]):
         if subLvl == "Enemy":
-            panel.combat_btn.append(Button(panel, (x, y_start + c * (h + gap), w, h), subLvl,key=pygame.K_e,group="combat_sub", active=True,
+            panel.combat_btn.append(Button(panel, (x, y_start + c * (h + gap), w, h), subLvl,key=pygame.K_e,group="combat_sub",
             on_toggle=lambda b, mode=subLvl.lower(): setattr(panel,"sub_mode","combat_enemy" if b.active else None)))
 
 
@@ -292,10 +295,20 @@ def _build_computer():
 
     for i, subLvl in enumerate(sub_labels["Information"]):
         panel.info_btn.append(Button(panel,(x, y_start + i * (h + gap), w, h), subLvl, group="info_sub",
-        on_toggle=lambda b, mode= subLvl.lower(): setattr(panel,"sub_mode", mode if b.active else "information")))
+        on_toggle=lambda b, mode= subLvl.lower(): setattr(panel,"sub_mode", mode if b.active else None)))
 
+    N = len(panel.combat_btn)
+    bottom_y = y_start + N * (h + gap)
+    # back button for submenus
+
+    #figure out back button
+    panel.back_btn.append(Button(panel, (8, 235, 84, 22), "<- Back",on_toggle=lambda b:
+                                                                                (setattr(panel,"primary_mode",None),
+                                                                                setattr(b,"active",False)))
+)
     #---------------- append buttons from panel ---------------------
 
+    panel.elements.remove(panel.back_btn[0])
     for m in panel.main_menu_btn:
         if m in panel.elements:
             panel.elements.remove(m)
@@ -757,45 +770,34 @@ def _draw_status_indicators(state):
 def _draw_computer(state):
     panel = P["Computer Display"]
 
+    panel.elements = [e for e in panel.elements if not isinstance(e, Button)]
     options = panel.get("options")
     options.surf.fill(PANEL_BG)
 
     prime_mode = panel.primary_mode
-    sub_mode = panel.sub_mode
     state.computer_panel = panel
-    # to_switch = prime_mode
 
     screen = panel.get("screen")
     screen.surf.fill(BLACK)
 
     #if not in default mode, has the main buttons, once primary_mode != None, it clears the main_menu buttons from panel and draws the mode_specific ones
 
+    #main_menu
     if prime_mode == None:
         _draw_computer_landing(screen, state)
-        for m in panel.main_menu_btn:
-            if not (m in panel.elements):
-                panel.elements.append(m)
-                m.draw()
+        panel.elements.extend(panel.main_menu_btn)
+        return
 
-    else:
-        clear_btn_group(panel,"main_menu")
-
+    #sub_menu
     if prime_mode == "combat status":
         _draw_computer_combat_stats(screen, state)
-        for c in panel.combat_btn:
-            if c not in panel.elements:
-                panel.elements.append(c)
-                c.draw()
+        panel.elements.extend(panel.combat_btn)
 
+    elif prime_mode == "Information":
+        _draw_computer_database_page(screen, state)
+        panel.elements.extend(panel.info_btn)
 
-    else:
-        clear_btn_group(panel,"combat_sub")
-
-        if prime_mode == "Information":
-            _draw_computer_database_page(screen, state)
-
-        # clear_btn_group(panel, prime_mode)
-
+    panel.elements.extend(panel.back_btn)
 
 def _draw_computer_landing(screen, state):
     surf = screen.surf
@@ -875,7 +877,6 @@ def _draw_computer_database_page(screen, state, mode):
         fit_text(surf, value, box.inflate(-8, -2), GREEN, 11, align="left")
         y += 30
 
-#holds the combat buttons
 def _draw_computer_combat_stats(screen, state):
 
     surf = screen.surf
