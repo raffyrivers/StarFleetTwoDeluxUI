@@ -98,6 +98,7 @@ class Button:
 
     def draw(self):
         rect = self.local
+
         if self.active:
             face = BUTTON_ACTIVE
         elif self.hover:
@@ -117,7 +118,7 @@ class Button:
         """Toggle (or set, for grouped radios) and notify the handler."""
 
         if self not in self.panel.elements:
-            return
+            pass
         else:
 
             if self.group is not None:

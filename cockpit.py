@@ -248,33 +248,44 @@ def _build_computer():
 
 
 
-    sub_labels = {
+    panel.sub_labels = {
         "Combat Status": ["Enemy", "Krellan"],
         "Information": ["Landing Party", "Planet", "Star Systems", "Bases", "Intelligence", "Reference Library"],
         "Special Services": ["Mission Tally", "Save", "Career", "Settings", "Quit"],
         "Intell_Sub": ["UGA Ships", "Starbases", "Miscellaneous","Intelligence Report"]
     }
 
-    if panel.primary_mode == None:
-        menu_x, menu_y, menu_w, menu_h, menu_gap = 8, 7, 84, 22, 3
-        for i, label in enumerate(MAIN_MENU):
 
-            if label == "Combat Status":
-                panel.main_menu_btn.append(Button(panel,(menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h), label,group="main_menu",
-                       on_toggle=lambda b, mode=label.lower(): setattr(panel,"primary_mode",mode if b.active else None)))
+    menu_x, menu_y, menu_w, menu_h, menu_gap = 8, 7, 84, 22, 3
+    for i, label in enumerate(MAIN_MENU):
 
+        if label == "Combat Status":
+            panel.main_menu_btn.append(Button(panel,(menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h), label,group="main_menu",
+                on_toggle=lambda b, mode=label.lower(): (
+                setattr(panel, "primary_mode", mode if b.active else None),
+                (setattr(m, "active", False) for m in panel.main_menu_btn if m is not b)
+                )))
 
-            if label == "Information":
-                panel.main_menu_btn.append(Button(panel,(menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h),label,group="main_menu",
-                       on_toggle=lambda b, mode=label.lower(): setattr(panel,"primary_mode",mode if b.active else None)))
+        if label == "Information":
+            panel.main_menu_btn.append(Button(panel,(menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h),label,group="main_menu",
+            on_toggle=lambda b, mode=label.lower(): (
+            setattr(panel, "primary_mode", mode if b.active else None),
+            [setattr(m, "active", False) for m in panel.main_menu_btn if
+            m is not b])))
 
-            if label == "Special Services":
-                panel.main_menu_btn.append(Button(panel,(menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h),label,group="main_menu",
-                       on_toggle=lambda b, mode=label.lower(): setattr(panel,"primary_mode",mode if b.active else None)))
+        if label == "Special Services":
+            panel.main_menu_btn.append(Button(panel,(menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h),label,group="main_menu",
+            on_toggle=lambda b, mode=label.lower(): (
+            setattr(panel, "primary_mode", mode if b.active else None),
+            [setattr(m, "active", False) for m in panel.main_menu_btn if
+            m is not b])))
 
-            if label == "Self-Destruct":
-                panel.main_menu_btn.append(Button(panel,(menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h),label,group="main_menu",
-                       on_toggle=lambda b, mode=label.lower(): setattr(panel,"primary_mode",mode if b.active else None)))
+        if label == "Self-Destruct":
+            panel.main_menu_btn.append(Button(panel,(menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h),label,group="main_menu",
+            on_toggle=lambda b, mode=label.lower(): (
+            setattr(panel, "primary_mode", mode if b.active else None),
+            [setattr(m, "active", False) for m in panel.main_menu_btn if
+            m is not b])))
 
     # initalize buttons
 
@@ -283,29 +294,63 @@ def _build_computer():
     panel.special_serv_btn = []
     panel.intell_btn = []
 
-    for c, subLvl in enumerate(sub_labels["Combat Status"]):
-        if subLvl == "Enemy":
-            panel.combat_btn.append(Button(panel, (x, y_start + c * (h + gap), w, h), subLvl,key=pygame.K_e,group="combat_sub",
-            on_toggle=lambda b, mode=subLvl.lower(): setattr(panel,"sub_mode","combat_enemy" if b.active else None)))
+    for c, subLvl in enumerate(panel.sub_labels["Combat Status"]):
 
+        mode = subLvl.lower()
+
+        if subLvl == "Enemy":
+            panel.combat_btn.append(
+                Button(
+                    panel,
+                    (menu_x, menu_y + c * (menu_h + menu_gap), menu_w, menu_h),
+                    subLvl,
+                    key=pygame.K_e,
+                    group="combat_sub",
+                    on_toggle=lambda b, m=mode: setattr(
+                        panel,
+                        "sub_mode",
+                        "combat_enemy" if (b.active) else None
+                    )
+                )
+            )
 
         else:
-            panel.combat_btn.append(Button(panel, (x, y_start + c * (h + gap), w, h), subLvl, key=pygame.K_k, group="combat_sub",
-            on_toggle=lambda b, mode=subLvl.lower(): setattr(panel, "sub_mode","combat_krellan" if b.active else None)))
+            panel.combat_btn.append(
+                Button(
+                    panel,
+                    (menu_x, menu_y + c * (menu_h + menu_gap), menu_w, menu_h),
+                    subLvl,
+                    key=pygame.K_k,
+                    group="combat_sub",
+                    on_toggle=lambda b, m=mode: setattr(
+                        panel,
+                        "sub_mode",
+                        "combat_krellan" if (b.active) else None
+                    )
+                )
+            )
 
-    for i, subLvl in enumerate(sub_labels["Information"]):
+    for i, subLvl in enumerate(panel.sub_labels["Information"]):
         panel.info_btn.append(Button(panel,(x, y_start + i * (h + gap), w, h), subLvl, group="info_sub",
-        on_toggle=lambda b, mode= subLvl.lower(): setattr(panel,"sub_mode", mode if b.active else None)))
+        on_toggle=lambda b, mode= subLvl.lower(): setattr(panel,"sub_mode", mode if (b.active and m == "krellan") else None)))
 
     N = len(panel.combat_btn)
     bottom_y = y_start + N * (h + gap)
     # back button for submenus
 
     #figure out back button
-    panel.back_btn.append(Button(panel, (8, 235, 84, 22), "<- Back",on_toggle=lambda b:
-                                                                                (setattr(panel,"primary_mode",None),
-                                                                                setattr(b,"active",False)))
-)
+    panel.back_btn.append(Button(panel, (8, 235, 84, 22), "<- Back[b]",key=pygame.K_b,
+    on_toggle=lambda b:
+        (
+        setattr(panel,"primary_mode",None),
+        setattr(panel,"sub_mode",None),
+        setattr(b,"active",False),
+        [setattr(m,"active", False) for m in panel.main_menu_btn],
+        [setattr(c, "active", False) for c in panel.combat_btn],
+        [setattr(i, "active", False) for i in panel.info_btn]
+        )
+        )
+    )
     #---------------- append buttons from panel ---------------------
 
     panel.elements.remove(panel.back_btn[0])
@@ -770,7 +815,24 @@ def _draw_status_indicators(state):
 def _draw_computer(state):
     panel = P["Computer Display"]
 
-    panel.elements = [e for e in panel.elements if not isinstance(e, Button)]
+
+    # print("ELEMENTS:", [e.label for e in panel.elements if isinstance(e, Button)])
+
+    if panel.primary_mode != None:
+        curr_sub = panel.sub_labels.get(panel.primary_mode,[])
+        new_elements = []
+
+        for e in panel.elements:
+            if isinstance(e, Button):
+                # keep only buttons that belong to the current mode
+                if e.label in curr_sub or e is panel.back_btn[0]:
+                    new_elements.append(e)
+            else:
+                # keep non-button UI elements (screens, surfaces)
+                new_elements.append(e)
+
+        panel.elements = new_elements
+
     options = panel.get("options")
     options.surf.fill(PANEL_BG)
 
@@ -786,18 +848,25 @@ def _draw_computer(state):
     if prime_mode == None:
         _draw_computer_landing(screen, state)
         panel.elements.extend(panel.main_menu_btn)
-        return
 
-    #sub_menu
-    if prime_mode == "combat status":
-        _draw_computer_combat_stats(screen, state)
-        panel.elements.extend(panel.combat_btn)
+        for b in panel.main_menu_btn:
+            if b not in panel.elements:
+                panel.elements.append(b)
 
-    elif prime_mode == "Information":
-        _draw_computer_database_page(screen, state)
-        panel.elements.extend(panel.info_btn)
+    else:
+        #sub_menu
+        if prime_mode == "combat status":
+            _draw_computer_combat_stats(screen, state)
+            panel.elements.extend(panel.combat_btn)
 
-    panel.elements.extend(panel.back_btn)
+        if prime_mode == "information":
+            _draw_computer_database_page(screen, state,prime_mode)
+            panel.elements.extend(panel.info_btn)
+
+
+
+        if panel.back_btn[0] not in panel.elements:
+            panel.elements.append(panel.back_btn[0])
 
 def _draw_computer_landing(screen, state):
     surf = screen.surf
