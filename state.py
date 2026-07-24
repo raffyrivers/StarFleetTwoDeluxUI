@@ -577,15 +577,20 @@ class ShipState:
         self.add_message("Science", f"{self.science_page} display selected")
 
     def set_computer_page(self, page):
-        valid = {"Combat Stats", "Information", "Landing Party", "Planets",
+        valid = {None,"Combat Status", "Information", "Landing Party", "Planets",
                  "Star Systems", "Bases", "Intelligence", "Reference Lib",
                  "Self-Destruct", "Special Services"}
+
+
         self.computer_page = page if page in valid else "Star Systems"
         if self.computer_page != "Self-Destruct" and self.self_destruct_armed:
             self.self_destruct_armed = False
             self.add_message("Computer", "self-destruct authorization cancelled")
         elif self.computer_page != "Self-Destruct":
             self.add_message("Computer", f"{self.computer_page} selected")
+
+        # if primary_mode == None:
+
 
     def activate_self_destruct(self):
         self.computer_page = "Self-Destruct"

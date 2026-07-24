@@ -80,6 +80,27 @@ def table(surface, headers, rows, x, y, widths, line_h=14, size=10, column_lines
 
 # --- panel construction -----------------------------------------------------
 
+#only works for computer display
+def clear_btn_group(panel,group):
+    # for reference
+    # panel.combat_btn = []
+    # panel.info_btn = []
+    # panel.special_serv_btn = []
+    # panel.intell_btn = []
+
+    toDelete = []
+    if group == "main_menu":
+        toDelete.extend(panel.main_menu_btn)
+    elif group == "combat_sub":
+        toDelete.extend(panel.combat_btn)
+    elif group == "info_sub":
+        toDelete.extend(panel.info_btn)
+
+    for d in toDelete:
+        if d in panel.elements:
+            panel.elements.remove(d)
+
+
 def build():
     P.clear()
     layout = [
@@ -208,63 +229,143 @@ class _Indicator:
 
 def _build_computer():
     panel = P["Computer Display"]
-    panel.computer_mode = "default"
-    panel.computer_combat_view = "e"
+    panel.primary_mode = None
+    panel.sub_mode = None
 
-    menu = ["Combat Stats", "Information", "Landing Party", "Planets", "Star Systems",
-            "Bases", "Intelligence", "Reference Lib", "Self-Destruct", "Special Services"]
+    MAIN_MENU = ["Combat Status", "Information", "Special Services", "Self-Destruct"]
+    panel.main_menu_btn = []
+    panel.back_btn = []
     Display(panel, "options", (90, 250), (5, 5))
     Display(panel, "screen", (475, 250), (100, 5))
 
-    #footer buttons
-    #combat
-    # panel.combat_view_buttons = []
+    #initialize buttons in each but append from panel to avoid autodraw
 
+    x = 10
+    y_start = 10
+    w = 80
+    h = 20
+    gap = 3
+
+
+
+    panel.sub_labels = {
+        "Combat Status": ["Enemy", "Krellan"],
+        "Information": ["Landing Party", "Planet", "Star Systems", "Bases", "Intelligence", "Reference Library"],
+        "Special Services": ["Mission Tally", "Save", "Career", "Settings", "Quit"],
+        "Intell_Sub": ["UGA Ships", "Starbases", "Miscellaneous","Intelligence Report"]
+    }
 
 
     menu_x, menu_y, menu_w, menu_h, menu_gap = 8, 7, 84, 22, 3
-    for i, label in enumerate(menu):
+    for i, label in enumerate(MAIN_MENU):
 
-        if label == "Combat Stats":
-            Button(panel,(menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h), label,group="computer_menu",
-                   on_toggle=lambda b, mode=label.lower(): setattr(panel,"computer_mode","combat_enemy" if b.active else "default"))
-
+        if label == "Combat Status":
+            panel.main_menu_btn.append(Button(panel,(menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h), label,group="main_menu",
+                on_toggle=lambda b, mode=label.lower(): (
+                setattr(panel, "primary_mode", mode if b.active else None),
+                (setattr(m, "active", False) for m in panel.main_menu_btn if m is not b)
+                )))
 
         if label == "Information":
-            Button(panel,(menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h),label,group="computer_menu",
-                   on_toggle=lambda b, mode=label.lower(): setattr(panel,"computer_mode",mode if b.active else "default"))
-
-        if label == "Landing Party":
-            Button(panel, (menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h), label, group="computer_menu",
-                   on_toggle=lambda b, mode=label.lower(): setattr(panel, "computer_mode", mode if b.active else "default"))
-
-        if label == "Planets":
-            Button(panel, (menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h), label, group="computer_menu",
-                   on_toggle=lambda b, mode=label.lower(): setattr(panel, "computer_mode", mode if b.active else "default"))
-
-        if label == "Star Systems":
-            Button(panel,(menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h),label,group="computer_menu",
-                   on_toggle=lambda b, mode=label.lower(): setattr(panel,"computer_mode",mode if b.active else "default"))
-
-        if label == "Bases":
-            Button(panel,(menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h),label,group="computer_menu",
-                   on_toggle=lambda b, mode=label.lower(): setattr(panel,"computer_mode",mode if b.active else "default"))
-
-        if label == "Intelligence":
-            Button(panel,(menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h),label,group="computer_menu",
-                   on_toggle=lambda b, mode=label.lower(): setattr(panel,"computer_mode",mode if b.active else "default"))
-
-        if label == "Reference Lib":
-            Button(panel,(menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h),label,group="computer_menu",
-                   on_toggle=lambda b, mode=label.lower(): setattr(panel,"computer_mode",mode if b.active else "default"))
-
-        if label == "Self-Destruct":
-            Button(panel,(menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h),label,group="computer_menu",
-                   on_toggle=lambda b, mode=label.lower(): setattr(panel,"computer_mode",mode if b.active else "default"))
+            panel.main_menu_btn.append(Button(panel,(menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h),label,group="main_menu",
+            on_toggle=lambda b, mode=label.lower(): (
+            setattr(panel, "primary_mode", mode if b.active else None),
+            [setattr(m, "active", False) for m in panel.main_menu_btn if
+            m is not b])))
 
         if label == "Special Services":
-            Button(panel,(menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h),label,group="computer_menu",
-                   on_toggle=lambda b, mode=label.lower(): setattr(panel,"computer_mode",mode if b.active else "default"))
+            panel.main_menu_btn.append(Button(panel,(menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h),label,group="main_menu",
+            on_toggle=lambda b, mode=label.lower(): (
+            setattr(panel, "primary_mode", mode if b.active else None),
+            [setattr(m, "active", False) for m in panel.main_menu_btn if
+            m is not b])))
+
+        if label == "Self-Destruct":
+            panel.main_menu_btn.append(Button(panel,(menu_x, menu_y + i * (menu_h + menu_gap), menu_w, menu_h),label,group="main_menu",
+            on_toggle=lambda b, mode=label.lower(): (
+            setattr(panel, "primary_mode", mode if b.active else None),
+            [setattr(m, "active", False) for m in panel.main_menu_btn if
+            m is not b])))
+
+    # initalize buttons
+
+    panel.combat_btn = []
+    panel.info_btn = []
+    panel.special_serv_btn = []
+    panel.intell_btn = []
+
+    for c, subLvl in enumerate(panel.sub_labels["Combat Status"]):
+
+        mode = subLvl.lower()
+
+        if subLvl == "Enemy":
+            panel.combat_btn.append(
+                Button(
+                    panel,
+                    (menu_x, menu_y + c * (menu_h + menu_gap), menu_w, menu_h),
+                    subLvl,
+                    key=pygame.K_e,
+                    group="combat_sub",
+                    on_toggle=lambda b, m=mode: setattr(
+                        panel,
+                        "sub_mode",
+                        "combat_enemy" if (b.active) else None
+                    )
+                )
+            )
+
+        else:
+            panel.combat_btn.append(
+                Button(
+                    panel,
+                    (menu_x, menu_y + c * (menu_h + menu_gap), menu_w, menu_h),
+                    subLvl,
+                    key=pygame.K_k,
+                    group="combat_sub",
+                    on_toggle=lambda b, m=mode: setattr(
+                        panel,
+                        "sub_mode",
+                        "combat_krellan" if (b.active) else None
+                    )
+                )
+            )
+
+    for i, subLvl in enumerate(panel.sub_labels["Information"]):
+        panel.info_btn.append(Button(panel,(x, y_start + i * (h + gap), w, h), subLvl, group="info_sub",
+        on_toggle=lambda b, mode= subLvl.lower(): setattr(panel,"sub_mode", mode if (b.active and m == "krellan") else None)))
+
+    N = len(panel.combat_btn)
+    bottom_y = y_start + N * (h + gap)
+    # back button for submenus
+
+    #figure out back button
+    panel.back_btn.append(Button(panel, (8, 235, 84, 22), "<- Back[b]",key=pygame.K_b,
+    on_toggle=lambda b:
+        (
+        setattr(panel,"primary_mode",None),
+        setattr(panel,"sub_mode",None),
+        setattr(b,"active",False),
+        [setattr(m,"active", False) for m in panel.main_menu_btn],
+        [setattr(c, "active", False) for c in panel.combat_btn],
+        [setattr(i, "active", False) for i in panel.info_btn]
+        )
+        )
+    )
+    #---------------- append buttons from panel ---------------------
+
+    panel.elements.remove(panel.back_btn[0])
+    for m in panel.main_menu_btn:
+        if m in panel.elements:
+            panel.elements.remove(m)
+
+    for b in panel.combat_btn:
+        if b in panel.elements:
+            panel.elements.remove(b)
+
+    for i in panel.info_btn:
+        if i in panel.elements:
+            panel.elements.remove(i)
+
 
 def _build_data():
     panel = P["Data"]
@@ -727,27 +828,62 @@ def _draw_status_indicators(state):
     fit_text(panel.surf, f"{state.nav_distance:.1f} Ly", panel.lbl_distance, GREEN, 12)
 
 
+
 def _draw_computer(state):
     panel = P["Computer Display"]
+
+
+    # print("ELEMENTS:", [e.label for e in panel.elements if isinstance(e, Button)])
+
+    if panel.primary_mode != None:
+        curr_sub = panel.sub_labels.get(panel.primary_mode,[])
+        new_elements = []
+
+        for e in panel.elements:
+            if isinstance(e, Button):
+                # keep only buttons that belong to the current mode
+                if e.label in curr_sub or e is panel.back_btn[0]:
+                    new_elements.append(e)
+            else:
+                # keep non-button UI elements (screens, surfaces)
+                new_elements.append(e)
+
+        panel.elements = new_elements
+
     options = panel.get("options")
     options.surf.fill(PANEL_BG)
-    mode = panel.computer_mode
+
+    prime_mode = panel.primary_mode
     state.computer_panel = panel
 
     screen = panel.get("screen")
     screen.surf.fill(BLACK)
 
-    if mode == "default":
-        _draw_computer_landing(screen, state)
-    elif mode == "combat_enemy" or mode == "combat_krellan":
-        _draw_computer_combat_stats(screen, state)
-    elif mode == "star systems":
-        _draw_star_systems(screen,state)
-    elif mode == "self-destruct":
-        _draw_self_destruct_screen(screen,state)
-    else:
-        _draw_computer_database_page(screen, state, mode)
+    #if not in default mode, has the main buttons, once primary_mode != None, it clears the main_menu buttons from panel and draws the mode_specific ones
 
+    #main_menu
+    if prime_mode == None:
+        _draw_computer_landing(screen, state)
+        panel.elements.extend(panel.main_menu_btn)
+
+        for b in panel.main_menu_btn:
+            if b not in panel.elements:
+                panel.elements.append(b)
+
+    else:
+        #sub_menu
+        if prime_mode == "combat status":
+            _draw_computer_combat_stats(screen, state)
+            panel.elements.extend(panel.combat_btn)
+
+        if prime_mode == "information":
+            _draw_computer_database_page(screen, state,prime_mode)
+            panel.elements.extend(panel.info_btn)
+
+
+
+        if panel.back_btn[0] not in panel.elements:
+            panel.elements.append(panel.back_btn[0])
 
 def _draw_computer_landing(screen, state):
     surf = screen.surf
@@ -798,13 +934,10 @@ def _draw_computer_landing(screen, state):
     footer = f"Contacts {len(state.scanner_contacts())}   Torpedoes {state.torpedoes}   Prisoners {state.prisoners}"
     fit_text(surf, footer, [18, rect.height - 19, rect.width - 36, 13], YELLOW, 9, align="center")
 
-
 def _draw_computer_database_page(screen, state, mode):
     surf = screen.surf
     rect = screen.rect
-    title = mode.replace("-", " ").title()
-    pygame.draw.rect(surf, FRAME_DIM, (4, 4, rect.width - 8, rect.height - 8), 1)
-    fit_text(surf, title.upper(), [10, 10, rect.width - 20, 18], WHITE, 13, align="center")
+
     rows = {
         "information": [("Ship", "Klagar-class battlecruiser"), ("Crew", str(state.crew)),
                         ("Power", f"{state.energy_pct}%"), ("Hull", f"{state.hull_pct}%")],
@@ -830,14 +963,17 @@ def _draw_computer_database_page(screen, state, mode):
         fit_text(surf, value, box.inflate(-8, -2), GREEN, 11, align="left")
         y += 30
 
-
 def _draw_computer_combat_stats(screen, state):
+
     surf = screen.surf
     rect = screen.rect
     panel = P["Computer Display"]
-    mode = panel.computer_mode
 
-    if mode == "combat_enemy":
+    sub_mode = panel.sub_mode
+    prime_mode = panel.primary_mode
+
+    #screen
+    if sub_mode == "combat_enemy":
         fit_text(surf, "COMBAT STATUS REPORT - Enemy", [4, 4, rect.width - 8, 20], WHITE, 14)
 
         headers = [
@@ -916,7 +1052,7 @@ def _draw_computer_combat_stats(screen, state):
 
         pygame.draw.rect(surf, FRAME_DIM, (4, 24, rect.width - 8, rect.height - 32), 1)
 
-    elif mode == "combat_krellan":
+    elif sub_mode == "combat_krellan":
         fit_text(surf, "COMBAT STATUS REPORT - Krellan Forces",
                  [4, 4, rect.width - 8, 20], WHITE, 14)
 
@@ -1002,48 +1138,6 @@ def _draw_computer_combat_stats(screen, state):
     btn_width = rect.width // 6
     btn_height = 24
     y = panel.rect.height - 36
-
-    enemy_box = pygame.Rect(0, y, btn_width, btn_height)
-    krellan_box = pygame.Rect(btn_width, y, btn_width, btn_height)
-
-    color = WHITE if mode == "combat_enemy" else GREY
-    pygame.draw.rect(surf, color, enemy_box)
-    pygame.draw.rect(surf, FRAME_DIM, enemy_box, 1)
-    fit_text(surf, "Enemy [e]", [enemy_box.x + 5, enemy_box.y, enemy_box.width - 10, enemy_box.height],
-             BLACK, 12)
-    color = WHITE if mode == "combat_krellan" else GREY
-    pygame.draw.rect(surf, color, krellan_box)
-    pygame.draw.rect(surf, FRAME_DIM, krellan_box, 1)
-    fit_text(surf, "Krellan [k]",
-             [krellan_box.x + 5, krellan_box.y, krellan_box.width - 10, krellan_box.height],
-             BLACK, 12)
-
-
-def _computer_combat_tab_rects(screen):
-    y = screen.rect.height - 30
-    return pygame.Rect(20, y, 120, 24), pygame.Rect(160, y, 140, 24)
-
-
-def computer_combat_tab_click(point):
-    panel = P["Computer Display"]
-    if panel.computer_mode != "combat stats":
-        return False
-    screen = panel.get("screen")
-    screen_rect = pygame.Rect(panel.x + screen.pos[0], panel.y + screen.pos[1],
-                              screen.size[0], screen.size[1])
-    if not screen_rect.collidepoint(point):
-        return False
-    local = (point[0] - screen_rect.x, point[1] - screen_rect.y)
-    enemy_box, krellan_box = _computer_combat_tab_rects(screen)
-    if enemy_box.collidepoint(local):
-        panel.computer_combat_view = "e"
-        return True
-    if krellan_box.collidepoint(local):
-        panel.computer_combat_view = "k"
-        return True
-    return False
-
-
 
 def _draw_self_destruct_screen(screen, state):
     surf = screen.surf
