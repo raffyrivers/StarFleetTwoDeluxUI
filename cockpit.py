@@ -17,6 +17,8 @@ from video import VideoDisplay
 
 P = {}            # panels keyed by tab/name
 WARN_WORDS = {"CAUTION", "LOW", "HOLD", "QUEUED", "LOCK"}
+SPHERE_FRAME_COUNT = 120
+SPHERE_ROTATION_FPS = 10
 
 # Communication feed content (authentic Krellan briefing data).
 MESSAGES = [
@@ -78,7 +80,7 @@ def table(surface, headers, rows, x, y, widths, line_h=14, size=10, column_lines
             cx += widths[i]
 
 
-def _project_sphere_texture(texture, diameter):
+def _project_sphere_texture(texture, diameter, longitude_offset=0.0):
     """Project an equirectangular texture onto a shaded orthographic sphere."""
     sphere = pygame.Surface((diameter, diameter), pygame.SRCALPHA)
     center = (diameter - 1) / 2
@@ -102,7 +104,7 @@ def _project_sphere_texture(texture, diameter):
         normal_z = math.sqrt(1 - normal_x * normal_x)
         longitude = math.asin(normal_x)
         texture_x = int(
-            (0.5 + longitude / (2 * math.pi)) * texture_width
+            (0.5 + longitude / (2 * math.pi) + longitude_offset) * texture_width
         ) % texture_width
         half_height = radius * normal_z
         top = max(0, round(center - half_height))
@@ -208,7 +210,13 @@ def _build_science():
 def _build_navigation():
     panel = P["Navigation Console"]
     orbit = Display(panel, "orbit", (210, 210), (5, 24))
-    orbit.planet = _project_sphere_texture(asset("notEarth.png"), 172)
+    texture = asset("notEarth.png")
+    orbit.planet_frames = [
+        _project_sphere_texture(
+            texture, 172, frame / SPHERE_FRAME_COUNT
+        )
+        for frame in range(SPHERE_FRAME_COUNT)
+    ]
     Display(panel, "system", (210, 210), (225, 24))
     Display(panel, "orbital display", (210, 80), (5, 245))
     Display(panel, "planets display", (210, 80), (225, 245))
@@ -532,7 +540,7 @@ def _build_log():
 def draw(state, current_time):
     _draw_primary(state)
     _draw_science(state)
-    _draw_navigation(state)
+    _draw_navigation(state, current_time)
     _draw_navigation_console_data(state)
     _draw_navigation_data(state)
     _draw_star_map(state)
@@ -634,7 +642,7 @@ def _draw_science_scope(panel, state, scope_label="scope", compact=False):
     fit_text(panel.surf, state.science_page, page_rect, fg, 9, align="right")
 
 
-def _draw_navigation(state):
+def _draw_navigation(state, current_time):
     panel = P["Navigation Console"]
     orbit = panel.get("orbit")
     system = panel.get("system")
@@ -649,7 +657,12 @@ def _draw_navigation(state):
     ocx, ocy = orbit.rect.center
     for radius, ring_color in [(98, (20, 32, 68)), (92, (26, 38, 88))]:
         pygame.draw.circle(orbit.surf, ring_color, (ocx, ocy), radius, 2)
-    orbit.surf.blit(orbit.planet, orbit.planet.get_rect(center=(ocx, ocy)))
+    frame_index = (
+        int(current_time * SPHERE_ROTATION_FPS / 1000)
+        % len(orbit.planet_frames)
+    )
+    frame = orbit.planet_frames[frame_index]
+    orbit.surf.blit(frame, frame.get_rect(center=(ocx, ocy)))
     cx, cy = system.rect.center
     pygame.draw.circle(system.surf, RED, (cx, cy), 90, 1)
     pygame.draw.circle(system.surf, (60, 120, 220), (cx, cy), 55, 1)
