@@ -78,6 +78,70 @@ def table(surface, headers, rows, x, y, widths, line_h=14, size=10, column_lines
             cx += widths[i]
 
 
+def _project_sphere_texture(texture, diameter):
+    """Project an equirectangular texture onto a shaded orthographic sphere."""
+    sphere = pygame.Surface((diameter, diameter), pygame.SRCALPHA)
+    center = (diameter - 1) / 2
+    radius = center - 1
+    texture_width, texture_height = texture.get_size()
+    latitude_map = pygame.Surface((texture_width, diameter), pygame.SRCALPHA)
+
+    for y in range(diameter):
+        normal_y = max(-1, min(1, (center - y) / radius))
+        latitude = math.asin(normal_y)
+        texture_y = int((0.5 - latitude / math.pi) * texture_height)
+        texture_y = max(0, min(texture_height - 1, texture_y))
+        latitude_map.blit(
+            texture.subsurface((0, texture_y, texture_width, 1)), (0, y)
+        )
+
+    for x in range(diameter):
+        normal_x = (x - center) / radius
+        if abs(normal_x) > 1:
+            continue
+        normal_z = math.sqrt(1 - normal_x * normal_x)
+        longitude = math.asin(normal_x)
+        texture_x = int(
+            (0.5 + longitude / (2 * math.pi)) * texture_width
+        ) % texture_width
+        half_height = radius * normal_z
+        top = max(0, round(center - half_height))
+        bottom = min(diameter, round(center + half_height) + 1)
+        column = latitude_map.subsurface((texture_x, 0, 1, diameter))
+        sphere.blit(
+            pygame.transform.smoothscale(column, (1, bottom - top)), (x, top)
+        )
+
+    mask_size = 32
+    mask = pygame.Surface((mask_size, mask_size), pygame.SRCALPHA)
+    mask_center = (mask_size - 1) / 2
+    mask_radius = mask_center
+    light_x, light_y, light_z = -0.38, 0.46, 0.80
+    for y in range(mask_size):
+        normal_y = (mask_center - y) / mask_radius
+        for x in range(mask_size):
+            normal_x = (x - mask_center) / mask_radius
+            distance = normal_x * normal_x + normal_y * normal_y
+            if distance > 1:
+                continue
+            normal_z = math.sqrt(1 - distance)
+            diffuse = max(
+                0, normal_x * light_x + normal_y * light_y + normal_z * light_z
+            )
+            brightness = 0.42 + 0.58 * diffuse
+            rim = min(0.22, (1 - normal_z) ** 2 * 0.3)
+            shade = round(255 * brightness * (1 - rim))
+            mask.set_at((x, y), (shade, shade, min(255, shade + 8), 255))
+
+    mask = pygame.transform.smoothscale(mask, (diameter, diameter))
+    sphere.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+
+    pygame.draw.circle(
+        sphere, (90, 185, 235), (round(center), round(center)), round(radius), 1
+    )
+    return sphere
+
+
 # --- panel construction -----------------------------------------------------
 
 def build():
@@ -143,7 +207,8 @@ def _build_science():
 
 def _build_navigation():
     panel = P["Navigation Console"]
-    Display(panel, "orbit", (210, 210), (5, 24))
+    orbit = Display(panel, "orbit", (210, 210), (5, 24))
+    orbit.planet = _project_sphere_texture(asset("notEarth.png"), 172)
     Display(panel, "system", (210, 210), (225, 24))
     Display(panel, "orbital display", (210, 80), (5, 245))
     Display(panel, "planets display", (210, 80), (225, 245))
@@ -582,13 +647,9 @@ def _draw_navigation(state):
             pygame.draw.line(grid, (255, 255, 255, 40), (0, gy), (disp.rect.width, gy))
         disp.surf.blit(grid, (0, 0))
     ocx, ocy = orbit.rect.center
-    for radius, ring_color in [(86, (20, 32, 68)), (62, (26, 38, 88)),
-                               (42, (24, 70, 42)), (34, (30, 150, 54))]:
+    for radius, ring_color in [(98, (20, 32, 68)), (92, (26, 38, 88))]:
         pygame.draw.circle(orbit.surf, ring_color, (ocx, ocy), radius, 2)
-    pygame.draw.circle(orbit.surf, (24, 88, 150), (ocx, ocy), 23)
-    pygame.draw.ellipse(orbit.surf, (40, 148, 65), (ocx - 13, ocy - 10, 18, 10))
-    pygame.draw.ellipse(orbit.surf, (52, 165, 75), (ocx + 2, ocy + 2, 14, 9))
-    pygame.draw.arc(orbit.surf, (160, 180, 210), (ocx - 21, ocy - 17, 42, 34), 0.4, 2.8, 1)
+    orbit.surf.blit(orbit.planet, orbit.planet.get_rect(center=(ocx, ocy)))
     cx, cy = system.rect.center
     pygame.draw.circle(system.surf, RED, (cx, cy), 90, 1)
     pygame.draw.circle(system.surf, (60, 120, 220), (cx, cy), 55, 1)
